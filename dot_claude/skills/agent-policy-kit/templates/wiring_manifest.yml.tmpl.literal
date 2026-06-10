@@ -1,0 +1,13 @@
+# wiring_manifest.yml — 「実装に対し配線が追随しているか」の宣言。
+# scripts/verify-wiring.sh が読む。schema (constrained, 2-space indent):
+#   rules:
+#     - id: <一意なID>
+#       when: "<glob: この変更があったら>"
+#       require_one_of:        # この中のいずれかも変更されていること
+#         - "<glob>"
+#       reason: "<なぜ配線が要るか>"
+#       smoke: "<任意: real entrypoint smoke コマンド (v1 は宣言のみ・未実行)>"
+# glob: ** は任意階層、* は同一階層。配線が本当に不要な変更では
+# .agent-evidence/wiring-waivers.txt に rule id を 1 行書いて理由を証跡化する。
+rules:
+{{WIRING_RULES}}
