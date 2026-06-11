@@ -4,8 +4,9 @@
 このリポジトリで AI エージェント (Claude Code / Codex 等) が守る規約。
 強制は hook / CI / reviewer が担い、この文書は意図共有に徹する。正本: `dot_claude/docs/agent-policy.md`。
 
-> **このリポジトリは config/docs repo (= agent-policy ワークフロー自身のソース) である。**
-> 成果物は markdown / yaml / shell であり runtime app ではない。よって「配線 (wiring)」は
+> **このリポジトリは chezmoi 管理の個人 dotfiles repo (config/docs 主体) である。**
+> agent-policy workflow はその収録物の一つ。成果物は markdown / yaml / shell であり runtime app ではない。
+> よって「配線 (wiring)」は
 > コードの runtime 結線ではなく **skill ↔ agent ↔ template ↔ 正本の参照整合 (meta-wiring)** に
 > 読み替える。「real entrypoint での観測可能挙動 assert」は、**verify-*.sh が実際に動く /
 > skill が新 agent を参照する / sample repo へ kit を適用して pipeline が 1 周回る** ことで担保する。
