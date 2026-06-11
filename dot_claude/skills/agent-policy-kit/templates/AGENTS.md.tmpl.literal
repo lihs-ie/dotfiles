@@ -10,18 +10,24 @@
 ## Build / Test / Lint
 {{BUILD_TEST_LINT}}
 
+## 仕様 (Spec layer)
+- 実装前に要求を `docs/specs/<feature>.md` に正規化する (Must / Should / 受入条件 / Non-goals / risk)。
+- 人間との認識合わせは `/grill-me`、正規化は spec-curator が行う。Must は機械検証可能な形にする。
+
 ## Non-negotiable rules (禁止事項)
 - 本番コードに **mock/stub/fake/dummy/spy** を導入しない。テストダブルは次のパスのみ:
   {{TEST_DOUBLE_DIRS}}
 - 本番経路に **test-only bypass** (`NODE_ENV === 'test'` 等) を入れない。
+- placeholder stub (`err501` / `notImplemented` / `todo!()` 等) を本番に残さない。
 - 例外は `ci/allowlist.yml` に **owner / reason / expires_at** 付きで登録する (無期限禁止・期限切れは CI fail)。
-- 指定スコープ外を変更しない。既存アーキテクチャ・依存方向・命名規約を尊重する。
+- spec の Non-goals / Scope 外を変更しない。既存アーキテクチャ・依存方向・命名規約を尊重する。
 
-## Done when (完了条件)
-- 要求挙動が **real public entrypoint から到達可能** である。
+## Done when (完了条件) — 二段門
+- 要求挙動が **real public entrypoint から到達可能** で、**観測可能挙動を実行 assert** した。
 - build / lint / typecheck / unit / contract / (integration・smoke) が通る。
-- 必要な配線更新が存在する (このリポジトリの結線点は下記)。
-- 完了報告に 実行コマンド・artifact・wiring map を含める。
+- 必要な配線更新が存在する (構造配線 + データフロー配線。結線点は下記)。
+- **① 構造ゲート** (Stop hook `scripts/agent-evidence-gate.sh`): 証跡が非空で揃う。
+- **② 意味ゲート** (done-evaluator agent): spec の Must × evidence を fresh context で照合し done。
 
 ### このリポジトリの結線点 (Wiring points)
 {{WIRING_POINTS}}
@@ -29,18 +35,20 @@
 
 ## Evidence required (完了報告の証跡 → .agent-evidence/)
 - changed files / public entrypoint(s) exercised / runtime commands (`commands.txt`)
-- artifact paths / `wiring-map.json` / remaining risks
+- artifact paths / `wiring-map.json` / spec 参照 / remaining risks
 - agent-dev 実行中は Stop hook が上記の提出を強制する。
 
-## Review guidelines
+## Review guidelines (rubric)
+- 判定は `rubric/core/wiring.md` (配線) / `rubric/core/spec.md` (仕様) と、検出言語の `rubric/packs/<lang>.md` に沿う。
 - 配線漏れ・未結線は **P0/P1**。境界跨ぎ変更で unit test のみを根拠にした done は却下。
-- allowlist 外の本番 test double は無条件却下。
-- 指摘は具体的コードパス/artifact に紐付ける。証跡不十分なら PASS でなく FAIL。
+- allowlist 外の本番 test double は無条件却下。「成功 toast」は証拠にしない (reload/read-back まで確認)。
+- 指摘は具体的コードパス/artifact/Must 番号に紐付ける。証跡不十分なら PASS でなく FAIL。
 - レビューは 2 周まで。残れば人間にエスカレーション。
-- 次に触れたら reviewer を最上位に昇格: `DI`/`routing`/`auth`/`config`/`migration`/`schema`/`public export`/`background job`/`event subscription`。
+- 次に触れたら reviewer を最深ティアに昇格: `DI`/`routing`/`auth`/`config`/`migration`/`schema`/`public export`/`background job`/`event subscription`。
 
 ## Smoke (v1: 宣言のみ)
 {{SMOKE_COMMANDS}}
 
 ## エージェント開発フロー
-`/agent-dev <task>` で Planner→Explorer→Implementer→決定論ゲート→Static→Integration→Final を駆動できる。
+- `/agent-dev <task>` で spec-curator→topology-mapper→implementer→決定論ゲート→static-verifier→runtime-verifier→spec-grader→done-evaluator を駆動。
+- `/self-improve` で失敗事例を eval/rule に昇格する外側ループを回す (incidents → evals/rules/promoted)。
