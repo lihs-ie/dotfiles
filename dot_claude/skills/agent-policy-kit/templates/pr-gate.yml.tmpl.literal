@@ -29,6 +29,8 @@ jobs:
         env:
           BASE_REF: origin/${{ github.base_ref }}
         run: bash scripts/verify-wiring.sh
+      - name: No unwired placeholder stub
+        run: bash scripts/verify-no-stub-placeholder.sh
       - name: Allowlist not expired
         run: bash scripts/verify-allowlist-expiry.sh
       - name: Upload policy evidence
