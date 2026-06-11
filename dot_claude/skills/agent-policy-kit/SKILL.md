@@ -30,7 +30,11 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
 - **hlint**: Haskell があれば backend の既存 `.hlint.yaml` に
   `templates/hlint/no-prod-doubles.yaml` の内容を **MERGE** (検出した *.Mock/*.Fake モジュールを enumerate)。
 - **scripts/**: `verify-no-prod-doubles.sh` `verify-test-bypass.sh` `verify-wiring.sh`
-  `verify-allowlist-expiry.sh` `agent-policy-hook.sh` `agent-evidence-gate.sh` を `scripts/` にコピー (chmod +x)。
+  `verify-no-stub-placeholder.sh` `verify-allowlist-expiry.sh` `agent-policy-hook.sh`
+  `agent-evidence-gate.sh` を `scripts/` にコピー (chmod +x)。
+  `verify-no-stub-placeholder.sh` は本番パスに残った未配線 stub (err501/notImplemented/undefined 等) を
+  検出する (verify-wiring のファイル共変更検査では捕えられない data-flow 未配線の補助。確実な検出は
+  Done When の観測可能挙動を real entrypoint で実行 assert すること)。
 - **wiring_manifest.yml**: `templates/wiring_manifest.yml.tmpl` の `{{WIRING_RULES}}` を、
   検出した結線点 (例: Haskell の `**/Api.hs`→`Main.hs`/`Application.hs`、Next.js の
   `app/**/route.ts`→登録点、NestJS の `*.controller.ts`→`*.module.ts`) で埋める。

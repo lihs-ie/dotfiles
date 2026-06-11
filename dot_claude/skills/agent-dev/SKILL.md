@@ -54,16 +54,34 @@ Task Contract + Impact Map から埋めて渡す。実装中は PostToolUse の 
 編集ごとにガード(ast-grep/hlint/lint/test/no-prod-doubles/test-bypass)を回し、違反は exit 2 でブロックされる。
 実装者は wiring-map.json / commands.txt / completion-report.md を残す。
 
+### Step 3.5: Implementer 完了ガード (skill が直接確認 — 実測で必要と判明)
+実装者は **大規模タスクで整形/テストに budget を取られ、結線を残したまま早期終了する**ことがある
+(関数は実装したが呼び出し側の placeholder を置換し忘れる)。fitness hook も verify-wiring の
+ファイル共変更検査も、この data-flow の未配線は捕捉できない。よって skill が機械的に確認する:
+1. 実装者の報告が **途中終了**(「次に…する」で終わる、結線/整形が未完を示唆)なら、未完タスクを
+   明示して **Step 3 へ差し戻す**(レビュー周回に数えない)。
+2. `wiring-map.json` が **diff の新規 export/top-level シンボルを網羅**しているか確認する。
+   ```
+   bash scripts/verify-no-stub-placeholder.sh > .agent-evidence/verify-no-stub-placeholder.log 2>&1
+   ```
+   placeholder stub (`throwError err501` / `notImplemented` / 本番の `undefined` 等) が残れば差し戻す。
+3. 各 `wired_at` が **実在の本番呼び出し**か grep で抜き取り確認する (定義/ export 宣言行ではない)。
+
 ### Step 4: Deterministic gates (skill が直接実行)
 ```
 bash scripts/verify-no-prod-doubles.sh   > .agent-evidence/verify-no-prod-doubles.log 2>&1
 bash scripts/verify-test-bypass.sh       > .agent-evidence/verify-test-bypass.log 2>&1
 bash scripts/verify-wiring.sh            > .agent-evidence/verify-wiring.log 2>&1
+bash scripts/verify-no-stub-placeholder.sh > .agent-evidence/verify-no-stub-placeholder.log 2>&1
 ```
 いずれか非ゼロ終了なら、その出力を implementer に戻して Step 3 へ(レビュー周回にカウントしない)。
 
-### Step 5: Integration verify
-`integration-verifier` を起動。build/wiring/entrypoint 到達を実行で確認。FAIL なら Step 3 へ。
+### Step 5: Integration verify (**観測可能挙動の実行 assert は必須・省略不可**)
+`integration-verifier` を起動。build/wiring/entrypoint 到達を実行で確認。
+**最重要**: Task Contract の Done When にある「real entrypoint での観測可能挙動」を**実際に実行して assert**する
+(例: `POST /v1/pronunciation-assessments` を叩き **findings が非空**であることを確認)。
+これが「実装したが未配線」を WHY によらず捕捉する唯一の確実なネット。build が通るだけ・
+ユニットが緑なだけでは PASS にしない。orchestrator が手動代替で**省略してはならない**。FAIL なら Step 3 へ。
 
 ### Step 6: Review loop (最大 2 周)
 1. `reviewer-static` → `reviewer-integration` → `reviewer-final` を順に起動。
@@ -83,5 +101,9 @@ bash scripts/verify-wiring.sh            > .agent-evidence/verify-wiring.log 2>&
 
 ## 不変条件
 - テストが緑なだけで「完了」と言わない。wiring map と real entrypoint 到達を示してから完了とする。
+- **完了の最終根拠は「real entrypoint を実行し、要求が産む観測可能挙動 (出力) を assert した」こと。**
+  build 成功・ユニット緑は弱い近似。Done When に観測可能挙動を必ず含め、Step 5 で実行 assert する。
+- **実装者の早期終了 (結線が後手順のまま中断) を Step 3.5 で検出し差し戻す。** orchestrator の
+  手動 grep を当てにしない (この依存自体が今回の配線ミスを生んだ)。
 - reviewer の指摘は必ずコードパス/artifact に紐付ける。抽象的懸念だけで pass/fail しない。
 - 本番パスの test double / test-bypass は allowlist 以外は無条件で差し戻す。

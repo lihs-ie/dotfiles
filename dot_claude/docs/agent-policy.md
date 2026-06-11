@@ -42,11 +42,19 @@
 
 - 要求された挙動が **real public entrypoint から到達可能** である
   (ローカル関数を直しただけで route/export/container/provider/main に載っていない状態は未完了)。
+- **観測可能挙動を real entrypoint で実行 assert した。** 「build/unit が緑」は弱い近似仕様であり
+  終了条件にしてはならない。要求が産む出力 (例: レスポンスの findings が非空) を real entrypoint 経由の
+  test or smoke で**実際に観測**し assert すること。これが「実装したが未配線」を WHY によらず捕捉する。
 - build / lint / typecheck / unit / contract / integration・smoke が通る。
-- 必要な **配線更新** が存在する:
-  `route` / `export` / `container` / `provider` / `main` / `module` / `migration` / `config` /
-  `event subscription` / `background job registration`。
-- 完了報告に **実行コマンド・生成 artifact・wiring map** が含まれる。
+- 必要な **配線更新** が存在する。2 種を含む:
+  - **構造の結線**: `route` / `export` / `container` / `provider` / `main` / `module` / `migration` /
+    `config` / `event subscription` / `background job registration`。
+  - **data-flow / call-site の結線**: 新規実装した関数・値が本番の呼び出し箇所から実際に参照され、
+    placeholder (`[]` / `Nothing` / `undefined` / `err501` / 固定リテラル) が残っていない。
+    *(実測: 別ファイルに関数を実装したが呼び出し側 placeholder を置換し忘れる事故が最頻。整形/テストに
+    budget を取られ「結線は後の手順」のまま早期終了して起きる。wire-first = 結線を最初に通す。)*
+- 完了報告に **実行コマンド・生成 artifact・wiring map** が含まれる
+  (wiring map は新規 export/top-level シンボルを漏れなく列挙し各々の実呼び出し箇所を記す)。
 
 ## 3. Evidence required (完了報告に必須の証跡)
 
@@ -100,9 +108,16 @@
 |---|---|
 | 本番 test double 禁止 | ast-grep / hlint ルール + `scripts/fitness/hook.sh` (PostToolUse, exit 2) + CI policy job |
 | test-only bypass 禁止 | ast-grep ルール + fitness hook + CI policy job |
-| wiring 追随 | `wiring_manifest.yml` + `scripts/verify-wiring.sh` + CI policy job |
+| 構造の wiring 追随 | `wiring_manifest.yml` + `scripts/verify-wiring.sh` (ファイル共変更検査) + CI policy job |
+| data-flow wiring (placeholder 未置換 / 未配線) | **挙動 assert** (Done When の観測可能挙動を Step 5 integration-verifier が real entrypoint で実行 assert) + `scripts/verify-no-stub-placeholder.sh` (stub 残置検出) + agent-dev Step 3.5 完了ガード |
 | 証跡提出 | `.agent-evidence/` + Stop hook (agent-dev 実行中マーカー時のみ発火) |
 | merge gate | GitHub required checks (`pr-gate.yml`) + artifacts + `GITHUB_STEP_SUMMARY` |
+
+> **注 (実測の教訓)**: `verify-wiring.sh` は「`when` の file を変えたら `require_one_of` の file も変えよ」という
+> **ファイル共変更**ヒューリスティックで、コードの**実参照を見ない**。よって「関数を実装したが呼び出し側の
+> placeholder (`= []` 等) を置換し忘れた」data-flow の未配線は **原理的に捕捉できない**。この種の未配線は
+> 言語非依存で確実な **real entrypoint の挙動 assert** (上表 data-flow 行) で捕える。grep ベースの orphan 検出は
+> 多行呼び出し等で誤検出が多く採用しない。
 
 ---
 
