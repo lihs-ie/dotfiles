@@ -16,7 +16,7 @@
   - `docs/agent-policy.md` — 禁止 / Done When / 証跡 / レビュー基準 / 役割・モデル配分の **単一正本**
   - `agents/` — 9 agent: spec-curator / topology-mapper / implementer / static-verifier /
     runtime-verifier / spec-grader / done-evaluator / failure-miner / harness-maintainer
-  - `skills/agent-dev/` — `/agent-dev <task>` 中心ループ (spec→implement→verify→grade→done)
+  - `skills/proven-done/` — `/proven-done <task>` 中心ループ (spec→implement→verify→grade→done)
   - `skills/agent-policy-kit/` — 任意 repo へ Detect→Diff→Apply で scaffold する kit
   - `skills/self-improve/` — 外側ループ (failure-miner → harness-maintainer、incidents→evals→rules 昇格)
 - `.github/` — branch rulesets / PR・Issue テンプレ
@@ -43,7 +43,7 @@
 - 完了報告に 実行コマンド・artifact・wiring map を含める。
 
 ### このリポジトリの結線点 (Wiring points)
-- agent 定義 (`dot_claude/agents/*.md`) → orchestrator skill (`agent-dev` / `self-improve`) か正本から参照される。
+- agent 定義 (`dot_claude/agents/*.md`) → orchestrator skill (`proven-done` / `self-improve`) か正本から参照される。
 - kit テンプレ (`.../agent-policy-kit/templates/**`) → kit `SKILL.md` の Apply 手順に載る。
 - 正本 (`agent-policy.md`) 変更 → 生成 AGENTS テンプレ / orchestrator に追随。
 詳細な機械チェックは `wiring_manifest.yml` + `scripts/verify-wiring.sh`。
@@ -51,7 +51,7 @@
 ## Evidence required (完了報告の証跡 → .agent-evidence/)
 - changed files / public entrypoint(s) exercised / runtime commands (`commands.txt`)
 - artifact paths / `wiring-map.json` / remaining risks
-- agent-dev 実行中は Stop hook (`scripts/agent-evidence-gate.sh`) が上記の提出を強制する。
+- proven-done 実行中は Stop hook (`scripts/agent-evidence-gate.sh`) が上記の提出を強制する。
 
 ## Review guidelines
 - 配線漏れ・未結線は **P0/P1**。境界跨ぎ変更で unit test のみを根拠にした done は却下。
@@ -61,5 +61,5 @@
 - 次に触れたら reviewer を最上位 (Opus) に昇格: `DI`/`routing`/`auth`/`config`/`migration`/`schema`/`public export`/`background job`/`event subscription`。
 
 ## エージェント開発フロー
-`/agent-dev <task>` で spec-curation→topology→implement→決定論ゲート→runtime-verify→spec-grade→done-evaluator を駆動できる。
+`/proven-done <task>` で spec-curation→topology→implement→決定論ゲート→runtime-verify→spec-grade→done-evaluator を駆動できる。
 `/self-improve` で失敗事例を eval/rule に昇格する外側ループを回せる。

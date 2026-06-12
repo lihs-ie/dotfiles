@@ -36,7 +36,7 @@
 ## Evidence required (完了報告の証跡 → .agent-evidence/)
 - changed files / public entrypoint(s) exercised / runtime commands (`commands.txt`)
 - artifact paths / `wiring-map.json` / spec 参照 / remaining risks
-- agent-dev 実行中は Stop hook が上記の提出を強制する。
+- proven-done 実行中は Stop hook が上記の提出を強制する。
 
 ## Review guidelines (rubric)
 - 判定は `rubric/core/wiring.md` (配線) / `rubric/core/spec.md` (仕様) と、検出言語の `rubric/packs/<lang>.md` に沿う。
@@ -50,5 +50,5 @@
 {{SMOKE_COMMANDS}}
 
 ## エージェント開発フロー
-- `/agent-dev <task>` で spec-curator→topology-mapper→implementer→決定論ゲート→static-verifier→runtime-verifier→spec-grader→done-evaluator を駆動。
+- `/proven-done <task>` で spec-curator→topology-mapper→implementer→決定論ゲート→static-verifier→runtime-verifier→spec-grader→done-evaluator を駆動。
 - `/self-improve` で失敗事例を eval/rule に昇格する外側ループを回す (incidents → evals/rules/promoted)。

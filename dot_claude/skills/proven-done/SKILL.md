@@ -1,9 +1,9 @@
 ---
-name: agent-dev
-description: モック濫用と未配線完了報告を防ぐ三層ループの中心ループを 1 タスクに対して駆動する。spec-curator→topology-mapper→implementer→決定論ゲート→static-verifier→runtime-verifier→spec-grader→done-evaluator(二段門)を役割別モデル(Sonnet床/境界Opus)で順に実行し、レビュー2周→人間エスカレーションで収束させる。証跡(.agent-evidence/)を必ず残し、Done は『real entrypoint から観測可能挙動を実行 assert + done-evaluator が Must を fresh context で意味判定』で決める。トリガーは /agent-dev <task> slash command、または『agent-dev で実装』『配線まで保証して実装』『未配線を防ぐパイプラインで』『reviewer 付きで実装してエスカレーションまで』等の依頼。前提: ~/.claude/agents/ の spec-curator/topology-mapper/implementer/static-verifier/runtime-verifier/spec-grader/done-evaluator と、対象 repo の AGENTS.md / wiring_manifest.yml / scripts/verify-*.sh。これらが無い repo では先に agent-policy-kit skill で scaffold する。
+name: proven-done
+description: モック濫用と未配線完了報告を防ぐ三層ループの中心ループを 1 タスクに対して駆動する。spec-curator→topology-mapper→implementer→決定論ゲート→static-verifier→runtime-verifier→spec-grader→done-evaluator(二段門)を役割別モデル(Sonnet床/境界Opus)で順に実行し、レビュー2周→人間エスカレーションで収束させる。証跡(.agent-evidence/)を必ず残し、Done は『real entrypoint から観測可能挙動を実行 assert + done-evaluator が Must を fresh context で意味判定』で決める。トリガーは /proven-done <task> slash command、または『proven-done で実装』『配線まで保証して実装』『未配線を防ぐパイプラインで』『reviewer 付きで実装してエスカレーションまで』等の依頼。前提: ~/.claude/agents/ の spec-curator/topology-mapper/implementer/static-verifier/runtime-verifier/spec-grader/done-evaluator と、対象 repo の AGENTS.md / wiring_manifest.yml / scripts/verify-*.sh。これらが無い repo では先に agent-policy-kit skill で scaffold する。
 ---
 
-# agent-dev
+# proven-done
 
 要求を 1 つ受け取り、`~/.claude/docs/agent-policy.md` の二大事故
 (本番テストダブル混入 / 未配線完了報告) を防ぎながら **仕様化〜完了判定** まで駆動する三層ループの中心ループ。

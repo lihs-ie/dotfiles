@@ -55,7 +55,7 @@
 - **risk 分類**: 次のいずれかに触れるなら `high-risk`。reviewer/verifier を最深ティアに昇格する (§7):
   `DI` / `routing` / `auth` / `config` / `migration` / `schema` / `public export` /
   `background job` / `event subscription`。
-- `agent-dev` の phase 1 はこの spec を **前提に読む**。spec が無ければ spec-curation を先に行う。
+- `proven-done` の phase 1 はこの spec を **前提に読む**。spec が無ければ spec-curation を先に行う。
 
 ## 3. Done when (完了条件) — 二段門
 
@@ -175,7 +175,7 @@
 | wiring 追随 (データフロー) | runtime-verifier の **real entrypoint 実行 assert** (ファイル共変更検査では捕捉不可) |
 | Done = 二段門 | ① `scripts/agent-evidence-gate.sh` (Stop, 構造) + ② `done-evaluator` agent (意味) |
 | 仕様/配線 rubric | `rubric/core/*.md` + `rubric/packs/<lang>.md` (検出言語のみ) を reviewer が参照 |
-| 証跡提出 | `.agent-evidence/` + Stop hook (agent-dev 実行中マーカー時のみ発火) |
+| 証跡提出 | `.agent-evidence/` + Stop hook (proven-done 実行中マーカー時のみ発火) |
 | merge gate | GitHub required checks (`pr-gate.yml`: 決定論ゲート必須 + AI review opt-in) + artifacts + `GITHUB_STEP_SUMMARY` |
 
 > CI の AI review (Codex / Claude) は **secret がある repo でのみ有効化する opt-in job** とし、

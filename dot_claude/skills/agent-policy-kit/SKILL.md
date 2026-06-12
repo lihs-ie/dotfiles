@@ -59,7 +59,7 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
    test-bypass / no-stub-placeholder / wiring / allowlist-expiry) が exit 1 する/正常時に exit 0 する、を
    一度確認し、確認後にダミー違反を消す。
 4. 適用結果を要約: 何を新規作成し、何にマージし、何をスキップしたか。
-5. 次アクションを案内: 「`/agent-dev <task>` で中心ループを、`/self-improve` で外側ループを駆動できる」。
+5. 次アクションを案内: 「`/proven-done <task>` で中心ループを、`/self-improve` で外側ループを駆動できる」。
 
 ## 不変条件
 - 既存ファイル (CLAUDE.md, .hlint.yaml, .claude/settings.json, sgconfig.yml) は **追記/マージ** であり全置換しない。

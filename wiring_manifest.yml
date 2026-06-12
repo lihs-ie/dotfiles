@@ -8,7 +8,7 @@ rules:
   - id: agent-referenced-by-orchestrator
     when: "dot_claude/agents/*.md"
     require_one_of:
-      - "dot_claude/skills/agent-dev/SKILL.md"
+      - "dot_claude/skills/proven-done/SKILL.md"
       - "dot_claude/skills/self-improve/SKILL.md"
       - "dot_claude/docs/agent-policy.md"
     reason: "新規/改名した agent は orchestrator skill か正本から参照されないと orphan (どの段からも起動されない) になる。"
@@ -24,7 +24,7 @@ rules:
     when: "dot_claude/docs/agent-policy.md"
     require_one_of:
       - "dot_claude/skills/agent-policy-kit/templates/AGENTS.md.tmpl.literal"
-      - "dot_claude/skills/agent-dev/SKILL.md"
+      - "dot_claude/skills/proven-done/SKILL.md"
       - "dot_claude/skills/agent-policy-kit/SKILL.md"
     reason: "正本 (single source of truth) を変えたら、そこから生成される AGENTS テンプレや、参照する orchestrator にも追随が要る。"
 
