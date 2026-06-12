@@ -21,9 +21,11 @@ description: "モック濫用と未配線完了報告を防ぐ agent-policy ガ�
 
 apply する各ファイルについて「新規 / 既存と差分 / スキップ」を提示する。特に注意:
 
-- **AGENTS.md / CLAUDE.md**: 正本 + 検出した `{{REPO_LAYOUT}}` `{{BUILD_TEST_LINT}}`
-  `{{TEST_DOUBLE_DIRS}}` `{{WIRING_POINTS}}` `{{SMOKE_COMMANDS}}` を埋めて生成。
-  CLAUDE.md が既存なら **末尾に「## Agent Policy」節を追記** (全置換しない)。
+- **AGENTS.md**: `templates/AGENTS.md.tmpl.literal` に正本 + 検出した `{{REPO_LAYOUT}}`
+  `{{BUILD_TEST_LINT}}` `{{TEST_DOUBLE_DIRS}}` `{{WIRING_POINTS}}` `{{SMOKE_COMMANDS}}` を埋めて生成。
+- **CLAUDE.md**: `templates/CLAUDE.md.section.tmpl.literal` の「## Agent Policy」節を使う。
+  既存 CLAUDE.md があれば **末尾に追記**、無ければ最小ヘッダ + 同節として生成 (全置換しない)。
+  内容は AGENTS.md を参照する Claude Code 向け要点 (AGENTS.md と冗長配置)。
 - **ast-grep**: `.ast-grep/rules/` に `no-prod-doubles.yml` `no-test-bypass.yml` を追加。
 - **hlint** (Haskell): backend の既存 `.hlint.yaml` に `templates/hlint/no-prod-doubles.yaml` を MERGE。
 - **scripts/**: `verify-no-prod-doubles.sh` `verify-test-bypass.sh` `verify-wiring.sh`
