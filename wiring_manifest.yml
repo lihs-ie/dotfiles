@@ -1,0 +1,36 @@
+# wiring_manifest.yml — dotfiles (config/docs repo) の配線追随宣言。
+# scripts/verify-wiring.sh が読む。コードの runtime 結線ではなく、
+# 「skill ↔ agent ↔ template ↔ 正本」の参照整合 (meta-wiring) を co-change で守る。
+# schema: rules[].{ id, when(glob), require_one_of[](glob), reason, smoke? }
+# glob: ** = 任意階層, * = 同一階層。配線不要な変更は
+# .agent-evidence/wiring-waivers.txt に rule id を 1 行書いて理由を証跡化する。
+rules:
+  - id: agent-referenced-by-orchestrator
+    when: "dot_claude/agents/*.md"
+    require_one_of:
+      - "dot_claude/skills/proven-done/SKILL.md"
+      - "dot_claude/skills/self-improve/SKILL.md"
+      - "dot_claude/docs/agent-policy.md"
+    reason: "新規/改名した agent は orchestrator skill か正本から参照されないと orphan (どの段からも起動されない) になる。"
+    smoke: "grep -RnoE '(spec-curator|topology-mapper|implementer|static-verifier|runtime-verifier|spec-grader|done-evaluator|failure-miner|harness-maintainer)' dot_claude/skills/*/SKILL.md"
+
+  - id: kit-template-registered-in-skill
+    when: "dot_claude/skills/agent-policy-kit/templates/**"
+    require_one_of:
+      - "dot_claude/skills/agent-policy-kit/SKILL.md"
+    reason: "kit の新規テンプレは SKILL.md の Apply 手順に載らないと、対象 repo へ scaffold されない (dead template)。"
+
+  - id: policy-propagates-to-generated
+    when: "dot_claude/docs/agent-policy.md"
+    require_one_of:
+      - "dot_claude/skills/agent-policy-kit/templates/AGENTS.md.tmpl.literal"
+      - "dot_claude/skills/proven-done/SKILL.md"
+      - "dot_claude/skills/agent-policy-kit/SKILL.md"
+    reason: "正本 (single source of truth) を変えたら、そこから生成される AGENTS テンプレや、参照する orchestrator にも追随が要る。"
+
+  - id: rubric-pack-listed-in-kit
+    when: "dot_claude/skills/agent-policy-kit/templates/rubric/packs/*.md"
+    require_one_of:
+      - "dot_claude/skills/agent-policy-kit/SKILL.md"
+      - "dot_claude/skills/agent-policy-kit/scripts/executable_detect-langs.sh"
+    reason: "stack pack は言語検出 (detect-langs) と Apply 手順に結線されないと opt-in 展開されない。"
