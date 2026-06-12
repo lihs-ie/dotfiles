@@ -33,7 +33,7 @@ code_ext_re='\.(ts|tsx|js|jsx|mjs|cjs|go|php|py|rb|java|kt|kts|hs|rs|scala|swift
 prod_changed="$(printf '%s\n' "$changed" | grep -Evi "$test_dir_re" | grep -Evi '(^|/)generated/' | grep -Ei "$code_ext_re" || true)"
 
 # 高シグナル placeholder マーカー。値そのもの ([] / Nothing 等) は対象にしない。
-placeholder_re='throwError[[:space:]]+err501|\bnotImplemented\b|\bunimplemented![[:space:]]*\(|\btodo![[:space:]]*\(|panic\([[:space:]]*["'\''`][^"'\''`]*not[[:space:]]+implemented|NotImplementedError|throw[[:space:]]+new[[:space:]]+Error\([[:space:]]*["'\''`][^"'\''`]*not[[:space:]]+implemented|\bSTUB:|\bPLACEHOLDER:|\bWIRE[-[:space:]]?ME\b|TODO\(wire\)'
+placeholder_re='throwError[[:space:]]+err501|\bnotImplemented\b|\bunimplemented![[:space:]]*\(|\btodo![[:space:]]*\(|panic\([[:space:]]*["'\''`][^"'\''`]*not[[:space:]]+implemented|NotImplementedError|throw[[:space:]]+new[[:space:]]+Error\([[:space:]]*["'\''`][^"'\''`]*not[[:space:]]+implemented|\bSTUB:|\bPLACEHOLDER:|\bWIRE[-[:space:]]?ME\b|TODO\([[:space:]]*wire|TODO:[[:space:]]*wire|FIXME\([[:space:]]*wire|undefined[[:space:]]*--|error[[:space:]]+"[^"]*(not[[:space:]]+implemented|unimplemented|TODO)'
 
 hits=""
 while IFS= read -r f; do
