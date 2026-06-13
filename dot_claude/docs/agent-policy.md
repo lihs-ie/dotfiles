@@ -162,6 +162,14 @@
 実装の固定スロット (implementer に毎回渡す): **Goal / Context / Constraints / Done When / Evidence Required**。
 **書くのは 1 体、読むのは多体、判定は独立** — 並列化するのは探索・レビュー・証拠収集側。実ファイル更新は implementer に集中させる。
 
+**per-edit hook が重い言語の大タスク分割**: PostToolUse fitness hook が編集ごとに重い検証 (Haskell の
+`cabal test` 等) を走らせる言語では、1 implementer に多ファイル変更を負わせると hook コストで budget を
+使い切り、結線/テスト完了直前で **早期終了**しやすい (incident: record field 追加漏れが runtime thunk
+crash)。3 ファイル以上を跨ぐ Haskell タスクは **型/DTO 定義・本番配線・テスト追加を別 implementer に分割**
+(互いにファイル衝突しない範囲で) し、各 implementer の scope を小さく保つ。早期終了の形跡があれば
+orchestrator は実装を肩代わりせず、build/test/grep で実ファイル状態を確認し残件だけ再 dispatch する
+(実装の正は緑テストではなく real entrypoint 到達)。
+
 ---
 
 ## 8. 強制レイヤ (この文書を実行可能にする変換先)
