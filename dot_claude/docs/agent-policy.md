@@ -52,6 +52,8 @@
   - **Should** — 望ましいが必須でない。
   - **受入条件 (acceptance)** — Must を「どのコマンド/挙動で確認するか」に翻訳したチェックリスト。
   - **Non-goals** — 今回やらないこと (scope 外・将来課題)。
+- spec-curator は `real_entrypoint` に対象サービスの inbound route を記録し、その下流呼び出し route を
+  inbound と取り違えない (サービス A が下流 B を HTTP で叩く構成で、A の real_entrypoint を B の route と混同しない)。
 - **risk 分類**: 次のいずれかに触れるなら `high-risk`。reviewer/verifier を最深ティアに昇格する (§7):
   `DI` / `routing` / `auth` / `config` / `migration` / `schema` / `public export` /
   `background job` / `event subscription`。
@@ -71,6 +73,8 @@
 - 要求された挙動が **real public entrypoint から到達可能** である
   (ローカル関数を直しただけで route/export/container/provider/main に載っていない状態は未完了)。
 - **観測可能挙動を real entrypoint で実行して assert** した (build 成功・unit 緑は弱い近似に過ぎない)。
+- テスト成功は exit code / "SUCCEEDED" 表示だけで判断せず、**実行件数 N>0 かつ failure 0** を確認する (0 件実行 = 成功ではない)。
+- working-tree 状態で回す決定論ゲートは未コミット変更も検査対象に含める (committed diff が空 = OK と即断しない)。
 - build / lint / typecheck / unit / contract / integration・smoke が通る。
 - 必要な **配線更新** が存在する:
   - **構造配線**: `route` / `export` / `container` / `provider` / `main` / `module` / `migration` /
