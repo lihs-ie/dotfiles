@@ -19,3 +19,6 @@ spec-grader が使う。仕様違反は diff の品質問題ではなく **contr
 - 証拠が不十分なら PASS ではなく **FAIL ("missing evidence")**。
 - 指摘は spec の Must 番号・コードパス・artifact に紐付ける (抽象的懸念だけで判定しない)。
 - 「モック禁止」は仕様違反 rubric・静的 gate・review guideline に **重複登録** されている (冗長配置が正解)。
+- **サービス間 HTTP 連携を含む feature の spec は、受入条件の real entrypoint を「対象サービスの
+  inbound route」と明記する**。そのサービスが呼ぶ下流サービスの route を inbound entrypoint と
+  取り違えない (spec-curator の正規化時に取り違えやすい)。

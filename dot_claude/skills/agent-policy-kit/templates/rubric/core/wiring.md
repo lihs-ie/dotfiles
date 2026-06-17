@@ -21,3 +21,11 @@ runtime-verifier が使う。「コードが存在する」ではなく「入口
 - event は publish するが consumer がいない
 
 > 「成功 toast が出る」は証拠にならない。**reload 後 / read-back / DB state diff** まで確認する。
+
+## real_entrypoint を下流サービスのパスと取り違えない
+- **spec-curator は `real_entrypoint` に「対象サービスの inbound route」を記録し、そのサービスが呼ぶ
+  下流サービスの route を inbound entrypoint として記録しない**。サービス A が下流サービス B の route を
+  HTTP で叩く構成では、A の wiring-map / spec 受入条件の real_entrypoint は **A 自身の inbound route**
+  であって、A が呼ぶ B の route ではない。
+- runtime-verify は対象サービスの inbound real entrypoint から流して観測する。下流サービスの route へ
+  直接リクエストした結果は、対象サービスの入口接続・中継接続の証拠にならない。
