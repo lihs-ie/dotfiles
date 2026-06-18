@@ -73,7 +73,7 @@
 - 要求された挙動が **real public entrypoint から到達可能** である
   (ローカル関数を直しただけで route/export/container/provider/main に載っていない状態は未完了)。
 - **観測可能挙動を real entrypoint で実行して assert** した (build 成功・unit 緑は弱い近似に過ぎない)。
-- テスト成功は exit code / "SUCCEEDED" 表示だけで判断せず、**実行件数 N>0 かつ failure 0** を確認する (0 件実行 = 成功ではない)。
+- テスト成功は exit code / "SUCCEEDED" 表示だけで判断せず、**実行件数 N>0 かつ failure 0** を確認する (0 件実行 = 成功ではない)。テストランナーは失敗ありでも exit 0 を返しうる (例: Xcode の xcodebuild は failedTests>0 でも exit 0)。**構造化結果 (xcresult / JUnit XML 等) の `failedTests>0` / `result≠passed` を一次判定**にし、gate は xcresulttool 等で parse して fail closed にする。
 - working-tree 状態で回す決定論ゲートは未コミット変更も検査対象に含める (committed diff が空 = OK と即断しない)。
 - build / lint / typecheck / unit / contract / integration・smoke が通る。
 - 必要な **配線更新** が存在する:
