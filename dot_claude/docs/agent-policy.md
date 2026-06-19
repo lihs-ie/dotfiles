@@ -52,6 +52,8 @@
   - **Should** — 望ましいが必須でない。
   - **受入条件 (acceptance)** — Must を「どのコマンド/挙動で確認するか」に翻訳したチェックリスト。
   - **Non-goals** — 今回やらないこと (scope 外・将来課題)。
+- spec-curator は `real_entrypoint` に対象サービスの inbound route を記録し、その下流呼び出し route を
+  inbound と取り違えない (サービス A が下流 B を HTTP で叩く構成で、A の real_entrypoint を B の route と混同しない)。
 - **risk 分類**: 次のいずれかに触れるなら `high-risk`。reviewer/verifier を最深ティアに昇格する (§7):
   `DI` / `routing` / `auth` / `config` / `migration` / `schema` / `public export` /
   `background job` / `event subscription`。
@@ -71,6 +73,8 @@
 - 要求された挙動が **real public entrypoint から到達可能** である
   (ローカル関数を直しただけで route/export/container/provider/main に載っていない状態は未完了)。
 - **観測可能挙動を real entrypoint で実行して assert** した (build 成功・unit 緑は弱い近似に過ぎない)。
+- テスト成功は exit code / "SUCCEEDED" 表示だけで判断せず、**実行件数 N>0 かつ failure 0** を確認する (0 件実行 = 成功ではない)。
+- working-tree 状態で回す決定論ゲートは未コミット変更も検査対象に含める (committed diff が空 = OK と即断しない)。
 - build / lint / typecheck / unit / contract / integration・smoke が通る。
 - 必要な **配線更新** が存在する:
   - **構造配線**: `route` / `export` / `container` / `provider` / `main` / `module` / `migration` /
@@ -161,6 +165,14 @@
 
 実装の固定スロット (implementer に毎回渡す): **Goal / Context / Constraints / Done When / Evidence Required**。
 **書くのは 1 体、読むのは多体、判定は独立** — 並列化するのは探索・レビュー・証拠収集側。実ファイル更新は implementer に集中させる。
+
+**per-edit hook が重い言語の大タスク分割**: PostToolUse fitness hook が編集ごとに重い検証 (Haskell の
+`cabal test` 等) を走らせる言語では、1 implementer に多ファイル変更を負わせると hook コストで budget を
+使い切り、結線/テスト完了直前で **早期終了**しやすい (incident: record field 追加漏れが runtime thunk
+crash)。3 ファイル以上を跨ぐ Haskell タスクは **型/DTO 定義・本番配線・テスト追加を別 implementer に分割**
+(互いにファイル衝突しない範囲で) し、各 implementer の scope を小さく保つ。早期終了の形跡があれば
+orchestrator は実装を肩代わりせず、build/test/grep で実ファイル状態を確認し残件だけ再 dispatch する
+(実装の正は緑テストではなく real entrypoint 到達)。
 
 ---
 
