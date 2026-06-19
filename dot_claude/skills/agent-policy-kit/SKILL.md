@@ -32,7 +32,7 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
   `verify-no-stub-placeholder.sh` `verify-allowlist-expiry.sh` `agent-policy-hook.sh`
   `agent-evidence-gate.sh` を `scripts/` にコピー (chmod +x)。
 - **rubric/**: `rubric/core/wiring.md` `rubric/core/spec.md` (必須) と、**検出言語に対応する**
-  `rubric/packs/<lang>.md` (nextjs/laravel/go/haskell/oidc/ddd のうち該当のみ) をコピー。
+  `rubric/packs/<lang>.md` (nextjs/laravel/go/haskell/python/oidc/ddd のうち該当のみ) をコピー。
 - **wiring_manifest.yml**: `templates/wiring_manifest.yml.tmpl` の `{{WIRING_RULES}}` を、
   検出した結線点 (Haskell `**/Api.hs`→`Main.hs`/`Application.hs`、Next.js `app/**/route.ts`→登録点、
   NestJS `*.controller.ts`→`*.module.ts` 等) で埋める。
