@@ -55,6 +55,8 @@ runtime-verifier / spec-grader / done-evaluator を **Opus** に昇格する。
 ### Step 3: Implement
 `implementer` に **Goal / Context / Constraints / Done When / Evidence Required** の 5 スロットを
 spec + Impact Map から埋めて渡す。**wire-first** (呼び出し側 placeholder を先に結線) を徹底させる。
+実装者は **TDD (RED→GREEN→Refactor)** で進め、同一アプローチの「実装↔テスト失敗」は **最大 3 回で approach pivot を強制**し、
+pivot を 2 回 (= 3 アプローチ) 試しても未達なら未完としてエスカレーションする (試行/pivot 履歴は commands.txt)。
 実装中は PostToolUse の policy hook が編集ごとにガード(no-prod-doubles / test-bypass)を回し、違反は exit 2 でブロックされる。
 実装者は wiring-map.json / commands.txt / completion-report.md を残す。
 
