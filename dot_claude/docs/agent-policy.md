@@ -115,6 +115,14 @@
 - 証跡が不十分なら PASS ではなく **FAIL ("missing evidence")** を返す。
 - レビューループは **2 周まで**。それでも FAIL が残る/同一指摘が 2 周連続 (collapsed loop) なら
   人間にエスカレーションする (終わりのない AI 同士の往復はコンテキスト汚染とコスト増を招く)。
+- implementer が **同一 test / spec に対し 3 回連続 RED → fix → RED** した場合、orchestrator は
+  spec-grader を DEEPEST_MODEL で再起動し、(a) test pyramid 層違反 (unit で表現できる挙動を E2E
+  に置いていないか) (b) 環境非決定性 (timing/order/UserDefaults 汚染) (c) spec 自体の inconsistency
+  を一次評価項目として **spec amend 提案** を能動的に出させる。implementer のさらなる try-and-error
+  を黙認しない (collapsed loop は spec の問題である可能性が高い)。
+- implementer は spec が `public` / `open` API シグネチャ不変を Must としている場合、変更前に
+  spec amend を要求し orchestrator にエスカレーションする。事後修正 (Round N で破壊 → Round N+1
+  で復元) は禁止。public API の互換破壊は spec 改訂 → 同意 → 実装の順で進める。
 
 ## 6. 外側ループ — 自己改善 (failure-mining → promotion)
 
