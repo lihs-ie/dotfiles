@@ -177,3 +177,7 @@ Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
 - 実装者の早期終了 (結線が後手順のまま中断) を Step 3.5 で検出し差し戻す。orchestrator の手動 grep を当てにしない。
 - reviewer の指摘は必ずコードパス/artifact/Must 番号に紐付ける。抽象的懸念だけで pass/fail しない。
 - 本番パスの test double / test-bypass は allowlist 以外は無条件で差し戻す。
+- `iterations.json` の `failure_class` は 5 値 enum のみ。未知 class は verify-failure-class.sh が exit 1 で検出する。
+- collapsed loop (末尾 3 ラウンド同一 failure_class) は Step 6.5 oracle-change branch に自動誘導する。verify-failure-class.sh が exit 2 で検出する。
+- context 窓 20% 以下で Step 10 に強制ジャンプし `time-budget-exceeded.md` を残す。翌セッションで再開可能にする。
+- フレーキーテスト (`failure_class=flaky`) を 2 回以上検出したら `ci/quarantine.yml` への隔離エントリ追加を implementer に義務付ける。
