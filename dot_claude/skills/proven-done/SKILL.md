@@ -128,6 +128,15 @@ bash scripts/verify-no-stub-placeholder.sh > .agent-evidence/verify-no-stub-plac
 よらず捕捉する唯一の確実なネット。build が通るだけ・unit が緑なだけでは PASS にしない。
 orchestrator が手動代替で**省略してはならない**。FAIL なら Step 3 へ。
 
+### Step 6.5: Oracle-change branch
+
+runtime-verifier が FAIL を返し、かつ `spec-review.json` に `oracle_change_suspected: true` が含まれる場合:
+
+1. **spec-grader を DEEPEST_MODEL で再起動**し、(a) test pyramid 層違反、(b) 環境非決定性、(c) spec 自体の inconsistency を一次評価させ **spec amend 提案** を出させる。
+2. spec amend 提案がある場合は **ユーザーに提示して承認を得る** (implementer の try-and-error を続けない)。
+3. amend 承認後は spec-curator で spec を更新し、Step 1 から再開する (周回カウントはリセット)。
+4. 3 周連続で oracle_change_suspected が出る場合は **collapsed oracle loop** として人間エスカレーション。
+
 ### Step 7: Spec grade
 `spec-grader` を起動し、spec の Must/Non-goal/契約を `rubric/core/spec.md` (+pack) で照合、`spec-review.json` に保存。
 Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
