@@ -147,12 +147,19 @@ Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
 - **② 意味ゲート**: `done-evaluator` を **fresh context** で起動し、spec の Must × evidence bundle を
   照合させ `done-eval.json` を得る。`continue` なら blocking_reasons を implementer に戻して Step 3 へ。
 
-### Step 9: 収束 (最大 2 周)
+### Step 9: 収束 (最大 2 周) + Time budget 強制
+
 1. Step 5〜8 のいずれかが FAIL / `continue` を返したら、blocking findings を集めて `implementer` に戻し、
    Step 3〜8 をやり直す (これで 1 周)。
 2. **2 周終えても残る**、または `done-eval.json.escalate_to_human=true`、または同一指摘が 2 周連続
    (collapsed loop) なら **人間にエスカレーション**: 未解決の blocking findings と artifact パスを提示して停止する。
 3. done-evaluator が `done` → 成功。
+
+**Time budget 強制** (context 枯渇防止):
+- context 窓の残り **20% 以下** になったら、現在 step に関わらず **Step 10 (後始末と報告)** に強制ジャンプする。
+- 強制ジャンプ時は blocking findings と現在状態を `.agent-evidence/time-budget-exceeded.md` に書いてから停止する。
+- 翌セッションは `time-budget-exceeded.md` を読んで Step 3 から再開できる。
+- context 20% 閾値を下回る前に警告を出し、ユーザーに続行 or 停止を選ばせることが望ましい。
 
 ### Step 10: 後始末と報告
 - `.agent-evidence/.active` を **削除** する。
