@@ -9,6 +9,11 @@ async Server Components は unit test に限界があるため E2E が特に重�
 - async Server Component 経路は **user-journey E2E** (Playwright) で確認された。
 - 本番コードに test helper / mock が混入していない。
 
+## seed / clock / random の非決定性制御
+- `Date.now()` / `Math.random()` を Server Component / Server Action で直接呼ばず、DI 可能な `Clock` を使う。
+- `jest.useFakeTimers()` + `jest.setSystemTime()` でタイムスタンプを固定する。
+- E2E (Playwright) では `page.clock.setFixedTime()` を使いタイムゾーン非依存のテストを保証する。
+
 ## 推奨証拠
 - Playwright trace (CI 失敗時の原因特定)。
 - 操作後の network assertion + reload 後の状態 assertion。

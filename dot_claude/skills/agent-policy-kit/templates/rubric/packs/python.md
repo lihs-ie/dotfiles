@@ -13,6 +13,11 @@ onion の純粋性 (domain / use-case が framework・IO・外部 SDK に依存�
 - 新規 public 関数が本番呼び出し箇所から実参照される (`grep -rn '<fn>' src --include='*.py'`)。
 - DI / 構成値は composition root に閉じ、設定の env 読みが domain / use-case に漏れていない。
 
+## seed / clock / random の非決定性制御
+- `datetime.now()` / `uuid.uuid4()` / `random.random()` を直接本番コードで呼ばず、DI 可能な `Clock` / `IdGenerator` に差し替える。
+- `freezegun.freeze_time("2024-01-01")` でタイムスタンプを固定する。
+- `random.seed(42)` をテストの `setUp` で実行し、乱数の非決定性を排除する。
+
 ## 推奨証拠
 - `pytest` (domain は pure unit、interface は `TestClient` で endpoint を実行 assert)。
 - `ruff` / `mypy` (lint・型)。
