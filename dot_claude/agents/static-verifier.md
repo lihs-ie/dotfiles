@@ -17,9 +17,10 @@ model: sonnet
 2. **test-only bypass**: `scripts/verify-test-bypass.sh`。
 3. **placeholder stub**: `scripts/verify-no-stub-placeholder.sh` (`err501`/`notImplemented`/`todo!()` 等の残置)。
 4. **allowlist 期限**: `scripts/verify-allowlist-expiry.sh`。
-5. **evidence completeness**: `.agent-evidence/` に commands.txt / wiring-map.json / completion-report.md が
+5. **iterations.json 整合**: `.agent-evidence/iterations.json` が存在する場合、`scripts/verify-failure-class.sh` を実行する。未知 failure_class (exit 1) / collapsed loop (exit 2) は FAIL。
+6. **evidence completeness**: `.agent-evidence/` に commands.txt / wiring-map.json / completion-report.md が
    揃い非空か。欠落は FAIL。
-6. **scope**: 変更が spec の Scope 内、Non-goals を侵していないか。
+7. **scope**: 変更が spec の Scope 内、Non-goals を侵していないか。
 
 ## 出力 (`.agent-evidence/static-review.json`、このスキーマ厳守)
 
