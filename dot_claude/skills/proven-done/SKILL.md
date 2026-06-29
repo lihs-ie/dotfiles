@@ -74,6 +74,19 @@ implementer は `.agent-evidence/iterations.json` に各試行ラウンドを追
 その合意を `spec-curator` に渡して正規化する (Must/Should/受入条件/Non-goal/risk)。
 `risk.level` を読み high-risk フラグを決める。`## Open questions` があればユーザーに確認。
 
+### Step 1.5: Two-lane router — 通常実装 vs 緊急ブロック判定
+
+spec を受け取った後、**2 車線** に分岐する:
+
+**Lane A (通常実装)**: risk が `low` でブロック要因なし → Step 2 へ進む。
+
+**Lane B (緊急ブロック)**: 以下のいずれかに該当したら、実装を開始せず即エスカレーション:
+- spec に `high-risk` かつ `migration / schema / public export` が含まれ、承認者不在。
+- wiring_manifest.yml のルールが全て `require_one_of` を満たせない。
+- `ci/allowlist.yml` に有効な例外が無く、本番 test double が既に混入している。
+
+エスカレーション時は blocking_reasons を列挙し、`.agent-evidence/.active` を削除して停止する。
+
 ### Step 2: Topology
 `topology-mapper` を起動し Impact Map (入口→中継→出口の wire-map + 必須配線点) を生成、
 `.agent-evidence/impact-map.md` に保存。orphan(到達不能になりうる)経路の警告があれば spec に反映。
