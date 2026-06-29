@@ -18,15 +18,16 @@ if [ ! -f "$target" ]; then
 fi
 
 # JSON parsing: jq preferred, python3 fallback
+# NOTE: missing failure_class field is emitted as __MISSING__ (not silently skipped)
 if command -v jq >/dev/null 2>&1; then
-  classes="$(jq -r '.iterations[].failure_class // empty' "$target" 2>/dev/null)"
+  classes="$(jq -r '.iterations[] | .failure_class // "__MISSING__"' "$target" 2>/dev/null)"
 elif command -v python3 >/dev/null 2>&1; then
   classes="$(python3 -c "
 import json, sys
 data = json.load(open('$target'))
 for i in data.get('iterations', []):
-    fc = i.get('failure_class', '')
-    print(fc)
+    fc = i.get('failure_class', '__MISSING__')
+    print(fc if fc != '' else '__MISSING__')
 " 2>/dev/null)"
 else
   echo "verify-failure-class: WARNING: neither jq nor python3 found; skipping check" >&2
@@ -38,10 +39,14 @@ if [ -z "$classes" ]; then
   exit 1
 fi
 
-# Check for unknown classes
+# Check for unknown classes (__MISSING__ = field absent = also invalid)
 while IFS= read -r cls; do
   if [ -z "$cls" ]; then
     echo "verify-failure-class: ERROR: empty failure_class" >&2
+    exit 1
+  fi
+  if [ "$cls" = "__MISSING__" ]; then
+    echo "verify-failure-class: ERROR: failure_class field absent in one or more iterations" >&2
     exit 1
   fi
   found=0
