@@ -20,6 +20,7 @@
 - 本番経路に **test-only bypass** (`NODE_ENV === 'test'` 等) を入れない。
 - placeholder stub (`err501` / `notImplemented` / `todo!()` 等) を本番に残さない。
 - 例外は `ci/allowlist.yml` に **owner / reason / expires_at** 付きで登録する (無期限禁止・期限切れは CI fail)。
+- **フレーキーテストは `ci/quarantine.yml` に隔離登録**する (`verify-allowlist-expiry.sh --quarantine` で期限切れ検出)。
 - spec の Non-goals / Scope 外を変更しない。既存アーキテクチャ・依存方向・命名規約を尊重する。
 
 ## Done when (完了条件) — 二段門
@@ -28,6 +29,7 @@
 - 必要な配線更新が存在する (構造配線 + データフロー配線。結線点は下記)。
 - **① 構造ゲート** (Stop hook `scripts/agent-evidence-gate.sh`): 証跡が非空で揃う。
 - **② 意味ゲート** (done-evaluator agent): spec の Must × evidence を fresh context で照合し done。
+- `.agent-evidence/iterations.json` の `failure_class` が 5 値 enum 内で collapsed loop が無い。
 
 ### このリポジトリの結線点 (Wiring points)
 {{WIRING_POINTS}}
