@@ -39,11 +39,22 @@
 - **フレーキーテストは `ci/quarantine.yml` に隔離登録**する (`verify-allowlist-expiry.sh --quarantine` で期限切れ検出)。
 - 指定スコープ外を変更しない。既存アーキテクチャ・依存方向・命名規約を尊重する。
 
+## Two-lane router — 実装レーン判定 (proven-done Step 1.5)
+
+spec 受け取り後、以下の判定式でレーンを決める:
+
+- **block lane**: `must_count > 8` OR `estimated_files > 30` OR (`high-risk` AND `boundary_touched=multi`) → 実装を開始せず即エスカレーション。
+- **light lane**: `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` → 通常進行 (Time budget: light=30min)。
+- **heavy lane**: それ以外 → 通常進行 (Time budget: heavy=90min)。
+
+`boundary_touched=multi`: DI / routing / auth / config / migration / schema / public export / background job / event subscription のうち 2 つ以上を跨ぐ。
+
 ## Done when (完了条件)
 - 要求挙動が **real public entrypoint から到達可能** (meta-repo では skill/agent/script が起動経路から参照可能)。
 - 決定論ゲートが通る / chezmoi 反映が整合する / dogfood pipeline が 1 周する。
 - 必要な配線更新が存在する (結線点は `wiring_manifest.yml`)。
 - `.agent-evidence/iterations.json` が存在する場合、`failure_class` が 5 値 enum 内で collapsed loop が無い。
+- **Time budget 強制**: context 窓 20% 以下 / wall clock (light=30min / heavy=90min) 超過 / no-new-evidence (20min 連続で新証拠なし) のいずれかで Step 10 に強制ジャンプし `time-budget-exceeded.md` を残す。
 - 完了報告に 実行コマンド・artifact・wiring map を含める。
 
 ### このリポジトリの結線点 (Wiring points)
