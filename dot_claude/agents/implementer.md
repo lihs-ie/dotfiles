@@ -101,6 +101,13 @@ TDD サイクルで RED になるたびに、`.agent-evidence/iterations.json` �
         "wired_at": ["app/Main.hs:42", "src/.../Application.hs:18"],
         "reachable_from": "POST /orders"
       }
+    ],
+    "quarantined_tests": [
+      {
+        "test": "tests/api/submit_order_spec.rb:flaky timeout",
+        "reason": "intermittent timing failure, 2 round failure_class=flaky",
+        "quarantined_at": "2026-06-29T12:00:00Z"
+      }
     ]
   }
   ```
