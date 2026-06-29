@@ -1,0 +1,10 @@
+# quarantine.yml — フレーキーテスト隔離レジストリ
+# verify-allowlist-expiry.sh --quarantine ci/quarantine.yml で期限切れを検出する。
+# 無期限隔離は禁止。期限切れエントリは CI を fail させる。
+#
+# entries:
+#   - test: "SuiteName.testMethodName"   # 隔離するテスト識別子
+#     reason: "intermittent timing issue"
+#     owner: "@username"
+#     expires_at: "YYYY-MM-DD"           # 必須・無期限禁止
+entries: []
