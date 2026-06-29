@@ -105,7 +105,7 @@ test を黙って書き換えると collapsed loop の温床になり実害が�
 シナリオ: iter 1-3 を `failure_class=product` で記録後、 deep dive で root cause が test-oracle と判明。 verify-failure-class.sh は **旧 3 entry** を見て exit 2 (collapsed loop) を出すが、 oracle_change_request 起票はこの局面でも有効:
 
 1. iter 4 を **`phase=pivot, approach_id=oracle-escalation, failure_class=test-oracle`** で append する。 iter 1-3 の旧 entry は触らない (append-only)。
-2. `oracle_change_request` トップレベル object を起票する (上記 2)。 `raised_at_iteration` は **起票時点の最新 iter 番号 (= 3、 新 entry 4 ではなく)** を入れる。
+2. `oracle_change_request` トップレベル object を起票する (上記 2)。 `raised_at_iteration` は **oracle と最初に判明した iter 番号 (= 3)** を入れる。 順序: 必ず **oracle 起票を先に書き、その後 iter 4 を append** すること (逆順にすると raised_at_iteration の解釈が「最新 iter = 4」 と曖昧化する)。
 3. **append-only の適用範囲は `iterations[]` のみ**。 トップレベル field (`oracle_change_request` / `flaky_quarantine_appended`) の null → object 書き換えは違反ではない。
 4. verify-failure-class.sh の **現実挙動**: oracle_change_request の存在を読まず exit 2 を出し続ける。 これは false positive として orchestrator が判定する責任 — `oracle_change_request.blocking=true` の存在を併せて見て、 exit 2 を override してエスカチェーン (spec-grader → AskUserQuestion → spec-curator) へ進む。
 5. implementer は exit 2 で turn を終えて待機する。 sh 自体の修正は別 issue (本 protocol は documentation 層の優先順位を定めるもの)。
