@@ -43,9 +43,9 @@
 
 spec 受け取り後、以下の判定式でレーンを決める:
 
-- **block lane**: `must_count > 8` OR `estimated_files > 30` OR (`high-risk` AND `boundary_touched=multi`) → 実装を開始せず即エスカレーション。
-- **light lane**: `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` → 通常進行 (Time budget: light=30min)。
-- **heavy lane**: それ以外 → 通常進行 (Time budget: heavy=90min)。
+- **block**: `must_count > 8` OR `estimated_files > 30` OR (`high-risk` AND `boundary_touched=multi`) → 実装を開始せず即エスカレーション。
+- **light**: `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` → 通常進行 (Time budget: light=30min)。
+- **heavy**: それ以外 → 通常進行 (Time budget: heavy=90min)。
 
 `boundary_touched=multi`: DI / routing / auth / config / migration / schema / public export / background job / event subscription のうち 2 つ以上を跨ぐ。
 
