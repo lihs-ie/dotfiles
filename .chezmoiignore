@@ -1,0 +1,17 @@
+# chezmoi が ~/ に apply しないファイル/ディレクトリ。
+# dot_claude/ → ~/.claude/ と dot_config/ → ~/.config/ のみを chezmoi 管理とし、
+# repo root の dogfood ファイル (AGENTS.md / CLAUDE.md / scripts / ci 等) は repo 内のみ。
+
+# dotfiles repo の dogfood (agent-policy-kit による自己適用)
+AGENTS.md
+CLAUDE.md
+README.md
+wiring_manifest.yml
+scripts
+ci
+tests
+
+# repo インフラ
+.github
+.gitignore
+.chezmoiignore
