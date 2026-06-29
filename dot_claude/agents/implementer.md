@@ -64,6 +64,23 @@ PostToolUse の policy hook が編集ごとにガードを回すので、違反�
 6. 試行と pivot の履歴 (アプローチ概要 / 失敗理由 / 試行回数) を `.agent-evidence/commands.txt` に
    追記し、orchestrator・人間が周回状況を監査できるようにする。
 
+## failure_class 義務と flaky 隔離手順
+
+### failure_class の記録義務
+
+TDD サイクルで RED になるたびに、`.agent-evidence/iterations.json` に **failure_class を必ず記録** する。
+未記録のまま GREEN に進むことは prohibited (static-verifier が証跡不十分で FAIL にする)。
+
+`failure_class` は 5 値のみ (`product` / `test-oracle` / `harness-env` / `flaky` / `wiring-integration`)。
+該当が不明なら `product` を仮置きし、note に「要確認」と書く。
+
+### flaky テストの隔離手順
+
+`failure_class=flaky` を **2 ラウンド以上** 記録した場合:
+1. `ci/quarantine.yml` に隔離エントリを追加する (owner・expires_at 必須・無期限禁止)。
+2. 隔離後はそのテストをローカル実行から除外し、週次で再試行する旨を `completion-report.md` に明記する。
+3. `wiring-map.json` に flaky テスト名と隔離理由を `quarantined_tests` フィールドとして追記する。
+
 ## 完了の条件 (Done When)
 
 1. 要求挙動が **real public entrypoint から到達可能**。新規 handler/route/module は
