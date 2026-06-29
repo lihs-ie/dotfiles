@@ -26,6 +26,8 @@
 このリポジトリはコードを持たないため、build/test/lint は次に読み替える:
 - `bash scripts/verify-no-prod-doubles.sh` / `verify-test-bypass.sh` / `verify-wiring.sh` /
   `verify-no-stub-placeholder.sh` / `verify-allowlist-expiry.sh` — 決定論ゲート
+- `bash scripts/verify-failure-class.sh` — iterations.json の failure_class 検証
+- `bash scripts/verify-allowlist-expiry.sh --quarantine ci/quarantine.yml` — quarantine 期限切れ検出
 - `chezmoi diff` / `chezmoi apply` — `~/.claude` への反映整合
 - sample repo への kit 適用 dry-run — 生成物が実際に動くかの dogfood
 
@@ -34,12 +36,14 @@
   `test/` `tests/` `__tests__/` `spec/` `specs/` `testdata/` `fixtures/` `mocks/` `stubs/` `fakes/`。
 - 本番経路に **test-only bypass** (`NODE_ENV === 'test'` 等) を入れない。
 - 例外は `ci/allowlist.yml` に **owner / reason / expires_at** 付きで登録する (無期限禁止・期限切れは CI fail)。
+- **フレーキーテストは `ci/quarantine.yml` に隔離登録**する (`verify-allowlist-expiry.sh --quarantine` で期限切れ検出)。
 - 指定スコープ外を変更しない。既存アーキテクチャ・依存方向・命名規約を尊重する。
 
 ## Done when (完了条件)
 - 要求挙動が **real public entrypoint から到達可能** (meta-repo では skill/agent/script が起動経路から参照可能)。
 - 決定論ゲートが通る / chezmoi 反映が整合する / dogfood pipeline が 1 周する。
 - 必要な配線更新が存在する (結線点は `wiring_manifest.yml`)。
+- `.agent-evidence/iterations.json` が存在する場合、`failure_class` が 5 値 enum 内で collapsed loop が無い。
 - 完了報告に 実行コマンド・artifact・wiring map を含める。
 
 ### このリポジトリの結線点 (Wiring points)
