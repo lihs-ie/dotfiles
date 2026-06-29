@@ -114,8 +114,10 @@ bash scripts/verify-no-prod-doubles.sh    > .agent-evidence/verify-no-prod-doubl
 bash scripts/verify-test-bypass.sh        > .agent-evidence/verify-test-bypass.log 2>&1
 bash scripts/verify-wiring.sh             > .agent-evidence/verify-wiring.log 2>&1
 bash scripts/verify-no-stub-placeholder.sh > .agent-evidence/verify-no-stub-placeholder.log 2>&1
+bash scripts/verify-failure-class.sh         > .agent-evidence/verify-failure-class.log 2>&1
 ```
 いずれか非ゼロ終了なら、その出力を implementer に戻して Step 3 へ(周回にカウントしない)。
+`verify-failure-class.sh` が exit 2 (collapsed loop) を返した場合、実装ループを継続せず **Step 6.5** の oracle-change branch に進む。
 
 ### Step 5: Static verify
 `static-verifier` を起動し、test double / bypass / placeholder / allowlist / 証跡 / scope を機械検査、
@@ -166,6 +168,7 @@ Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
 - ユーザーへ 3 セクションで返す: **対応した内容** (entrypoint 到達を明記) / **変更ファイル一覧**
   (wiring-map.json と対応付け) / **エスカレーション事項** (残リスク・人間判断が要る点・未実行 smoke 等)。
 - 失敗/補正があれば `incidents/` に記録し、`/self-improve` での昇格を促す。
+- `.agent-evidence/iterations.json` が存在する場合、**failure_class 分布** (各 class の出現回数) をサマリに含める。
 
 ## 不変条件
 - テストが緑なだけで「完了」と言わない。wiring map と real entrypoint 到達を示してから完了とする。
