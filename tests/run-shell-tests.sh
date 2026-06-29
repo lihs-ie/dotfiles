@@ -1,5 +1,6 @@
-#!/opt/homebrew/bin/bash
+#!/usr/bin/env bash
 # pure bash test runner for shell scripts
+# Requires bash (not sh/dash) — arithmetic is bash-specific.
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
@@ -18,10 +19,10 @@ run_test() {
 
   if [ "$actual_exit" -eq "$expected_exit" ]; then
     echo "PASSED: $name (exit $actual_exit)"
-    ((pass_count++)) || true
+    pass_count=$((pass_count + 1))
   else
     echo "FAILED: $name (expected exit $expected_exit, got $actual_exit)"
-    ((fail_count++)) || true
+    fail_count=$((fail_count + 1))
   fi
 }
 
