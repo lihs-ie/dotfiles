@@ -135,7 +135,7 @@ orchestrator が手動代替で**省略してはならない**。FAIL なら Ste
 runtime-verifier が FAIL を返し、かつ `spec-review.json` に `oracle_change_suspected: true` が含まれる場合:
 
 1. **spec-grader を DEEPEST_MODEL で再起動**し、(a) test pyramid 層違反、(b) 環境非決定性、(c) spec 自体の inconsistency を一次評価させ **spec amend 提案** を出させる。
-2. spec amend 提案がある場合は **ユーザーに提示して承認を得る** (implementer の try-and-error を続けない)。
+2. spec amend 提案がある場合は **`AskUserQuestion(...)` を用いてユーザーに提示して承認を得る** (implementer の try-and-error を続けない)。
 3. amend 承認後は spec-curator で spec を更新し、Step 1 から再開する (周回カウントはリセット)。
 4. 3 周連続で oracle_change_suspected が出る場合は **collapsed oracle loop** として人間エスカレーション。
 
