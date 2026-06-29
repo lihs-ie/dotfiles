@@ -90,6 +90,14 @@ PostToolUse の policy hook が編集ごとにガードを回すので、違反�
 - `.agent-evidence/completion-report.md` — agent-policy 正本 §4 の証跡 (changed files / entrypoints /
   commands / artifacts / wiring map / spec 参照 / remaining risks) を埋める。
 
+### iterations.json (試行ログ)
+
+`.agent-evidence/iterations.json` を TDD サイクルごとに **追記** する。
+verify-failure-class.sh がこのファイルを読んで collapsed loop と未知 class を検出する。
+
+failure_class は 5 値のみ:
+`product` | `test-oracle` | `harness-env` | `flaky` | `wiring-integration`
+
 ## 報告フォーマット (最終出力)
 
 `対応した内容` / `変更ファイル一覧` / `エスカレーション事項` の 3 セクションで返す。

@@ -43,6 +43,32 @@ runtime-verifier / spec-grader / done-evaluator を **Opus** に昇格する。
 | 7 SpecGrade | spec-grader | sonnet | opus | `spec-review.json` |
 | 8 Done | done-evaluator | sonnet | opus | `done-eval.json` |
 
+### iterations.json スキーマ (Step 3 が書き、Step 4/10 が読む)
+
+implementer は `.agent-evidence/iterations.json` に各試行ラウンドを追記する。
+`scripts/verify-failure-class.sh` がこのファイルを読んで collapsed loop と未知 class を検出する。
+
+```json
+{
+  "iterations": [
+    {
+      "round": 1,
+      "failure_class": "product | test-oracle | harness-env | flaky | wiring-integration",
+      "approach": "アプローチの概要 (1行)",
+      "result": "red | green | pivot | escalate",
+      "note": "失敗理由 または 達成内容 (1行)"
+    }
+  ]
+}
+```
+
+`failure_class` enum:
+- `product` — 実装ロジックの誤り (仕様通りに実装できていない)
+- `test-oracle` — テスト自体が間違い / spec 不整合
+- `harness-env` — 環境・タイミング・非決定性 (flaky と区別: 再現性あり vs なし)
+- `flaky` — 非決定的失敗 (CI 環境の順序依存・timing race)
+- `wiring-integration` — 配線・結線・DI・route 登録の欠落
+
 ### Step 1: Spec curation
 `docs/specs/<feature>.md` が無ければ、まず **`/grill-me`** で人間と決定木を解消し、
 その合意を `spec-curator` に渡して正規化する (Must/Should/受入条件/Non-goal/risk)。
