@@ -74,18 +74,20 @@ implementer は `.agent-evidence/iterations.json` に各試行ラウンドを追
 その合意を `spec-curator` に渡して正規化する (Must/Should/受入条件/Non-goal/risk)。
 `risk.level` を読み high-risk フラグを決める。`## Open questions` があればユーザーに確認。
 
-### Step 1.5: Two-lane router — 通常実装 vs 緊急ブロック判定
+### Step 1.5: Two-lane router — 実装レーン判定
 
-spec を受け取った後、**2 車線** に分岐する:
+spec 受け取り後、以下の判定式でレーンを決める (agent-policy.md §2.5 と完全一致):
 
-**Lane A (通常実装)**: risk が `low` でブロック要因なし → Step 2 へ進む。
+| レーン | 条件 | 対応 |
+|---|---|---|
+| **block** | `must_count > 8` OR `estimated_files > 30` OR (`high-risk` AND `boundary_touched=multi`) | implementer 起動なし。topology-mapper → spec-grader DEEPEST で分割推奨 → AskUserQuestion でキックオフ |
+| **light** | `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` | Step 2 へ通常進行。topology-mapper / static-verifier / spec-grader skip。runtime-verifier は entrypoint touch 時のみ |
+| **heavy** | それ以外 | Step 2 へ通常進行 (Time budget: heavy=90min) |
 
-**Lane B (緊急ブロック)**: 以下のいずれかに該当したら、実装を開始せず即エスカレーション:
-- spec に `high-risk` かつ `migration / schema / public export` が含まれ、承認者不在。
-- wiring_manifest.yml のルールが全て `require_one_of` を満たせない。
-- `ci/allowlist.yml` に有効な例外が無く、本番 test double が既に混入している。
-
-エスカレーション時は blocking_reasons を列挙し、`.agent-evidence/.active` を削除して停止する。
+- `boundary_touched=multi`: DI / routing / auth / config / migration / schema / public export / background job / event subscription のうち 2 つ以上を跨ぐ。
+- **block レーン**: blocking_reasons を列挙し `.agent-evidence/.active` を削除して停止する。implementer は起動しない。topology-mapper と spec-grader DEEPEST を順に起動して spec 分割推奨を出し、`AskUserQuestion(...)` でユーザーにキックオフを委ねる。
+- **light レーン**: topology-mapper / static-verifier / spec-grader を skip する。runtime-verifier は entrypoint に touch した場合のみ起動する。
+- light/heavy の区別は Time budget 閾値に影響する (light=30min / heavy=90min)。
 
 ### Step 2: Topology
 `topology-mapper` を起動し Impact Map (入口→中継→出口の wire-map + 必須配線点) を生成、
