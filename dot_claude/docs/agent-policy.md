@@ -60,6 +60,20 @@
   `background job` / `event subscription`。
 - `proven-done` の phase 1 はこの spec を **前提に読む**。spec が無ければ spec-curation を先に行う。
 
+## 2.5 Two-lane router — 実装レーン判定
+
+spec 受け取り後、以下の判定式でレーンを決める (proven-done Step 1.5):
+
+| レーン | 条件 | 対応 |
+|---|---|---|
+| **block** | `must_count > 8` OR `estimated_files > 30` OR (`high-risk` AND `boundary_touched=multi`) | 実装を開始せず即エスカレーション |
+| **light** | `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` | Step 2 へ通常進行 |
+| **heavy** | それ以外 | Step 2 へ通常進行 (Time budget は heavy=90min) |
+
+- `boundary_touched=multi`: DI / routing / auth / config / migration / schema / public export / background job / event subscription のうち 2 つ以上を跨ぐ。
+- block レーンは blocking_reasons を列挙し `.agent-evidence/.active` を削除して停止する。
+- light/heavy の区別は Time budget 閾値に影響する (light=30min / heavy=90min)。
+
 ## 3. Done when (完了条件) — 二段門
 
 次を **すべて** 満たして初めて「完了」と呼べる。最終確認は **二段門** で行う:

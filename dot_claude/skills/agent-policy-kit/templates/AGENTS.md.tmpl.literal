@@ -23,6 +23,16 @@
 - **フレーキーテストは `ci/quarantine.yml` に隔離登録**する (`verify-allowlist-expiry.sh --quarantine` で期限切れ検出)。
 - spec の Non-goals / Scope 外を変更しない。既存アーキテクチャ・依存方向・命名規約を尊重する。
 
+## Two-lane router — 実装レーン判定 (proven-done Step 1.5)
+
+spec 受け取り後、以下の判定式でレーンを決める:
+
+- **block**: `must_count > 8` OR `estimated_files > 30` OR (`high-risk` AND `boundary_touched=multi`) → 実装を開始せず即エスカレーション。
+- **light**: `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` → 通常進行 (Time budget: light=30min)。
+- **heavy**: それ以外 → 通常進行 (Time budget: heavy=90min)。
+
+`boundary_touched=multi`: DI / routing / auth / config / migration / schema / public export のうち 2 つ以上を跨ぐ。
+
 ## Done when (完了条件) — 二段門
 - 要求挙動が **real public entrypoint から到達可能** で、**観測可能挙動を実行 assert** した。
 - build / lint / typecheck / unit / contract / (integration・smoke) が通る。
