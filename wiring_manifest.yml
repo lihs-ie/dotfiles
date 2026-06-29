@@ -24,6 +24,7 @@ rules:
     when: "dot_claude/docs/agent-policy.md"
     require_one_of:
       - "dot_claude/skills/agent-policy-kit/templates/AGENTS.md.tmpl.literal"
+      - "dot_claude/skills/agent-policy-kit/templates/CLAUDE.md.section.tmpl.literal"
       - "dot_claude/skills/proven-done/SKILL.md"
       - "dot_claude/skills/agent-policy-kit/SKILL.md"
     reason: "正本 (single source of truth) を変えたら、そこから生成される AGENTS テンプレや、参照する orchestrator にも追随が要る。"
