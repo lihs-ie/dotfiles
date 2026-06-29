@@ -96,9 +96,19 @@ test を黙って書き換えると collapsed loop の温床になり実害が�
      }
    }
    ```
-3. orchestrator に未完エスカ。 上記 §試行上限 7 のフロー (spec-grader → AskUserQuestion → spec-curator → Step 3 再開) を **待つ**。
+3. orchestrator に未完エスカ。 上記 §試行上限 7 のフロー (spec-grader → AskUserQuestion → spec-curator → Step 3 再開) を **待つ**。 trigger 手段は **turn を終えるだけ** (implementer 自身が AskUserQuestion を呼ばない、 駆動は orchestrator 責務)。
 4. **承認待ち中は実装コードへの追加 Edit を一切行わない** (oracle 確定前に GREEN を狙う行為禁止)。 証跡整備 (commands.txt / wiring-map.json の現状反映) のみ可。
-5. 承認後に spec が更新されたら、 iterations.json の新 entry で再 RED から再開する (旧 entry は遡及修正しない、 append-only)。
+5. 承認後に spec が更新されたら、 iterations.json の **新 entry** で再 RED から再開する (旧 entry は遡及修正しない、 append-only)。
+
+#### collapsed loop 検出後に oracle と判明したケース (3 連続 product 後の救済)
+
+シナリオ: iter 1-3 を `failure_class=product` で記録後、 deep dive で root cause が test-oracle と判明。 verify-failure-class.sh は **旧 3 entry** を見て exit 2 (collapsed loop) を出すが、 oracle_change_request 起票はこの局面でも有効:
+
+1. iter 4 を **`phase=pivot, approach_id=oracle-escalation, failure_class=test-oracle`** で append する。 iter 1-3 の旧 entry は触らない (append-only)。
+2. `oracle_change_request` トップレベル object を起票する (上記 2)。 `raised_at_iteration` は **起票時点の最新 iter 番号 (= 3、 新 entry 4 ではなく)** を入れる。
+3. **append-only の適用範囲は `iterations[]` のみ**。 トップレベル field (`oracle_change_request` / `flaky_quarantine_appended`) の null → object 書き換えは違反ではない。
+4. verify-failure-class.sh の **現実挙動**: oracle_change_request の存在を読まず exit 2 を出し続ける。 これは false positive として orchestrator が判定する責任 — `oracle_change_request.blocking=true` の存在を併せて見て、 exit 2 を override してエスカチェーン (spec-grader → AskUserQuestion → spec-curator) へ進む。
+5. implementer は exit 2 で turn を終えて待機する。 sh 自体の修正は別 issue (本 protocol は documentation 層の優先順位を定めるもの)。
 
 ### flaky テストの隔離手順
 
