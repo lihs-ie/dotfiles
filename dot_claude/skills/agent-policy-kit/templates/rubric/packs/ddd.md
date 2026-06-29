@@ -16,6 +16,11 @@
 - 他モデルの識別子はそのモデル名をフィールド名にし suffix `Identifier` を付けない
   (例: `LotteryApplication.stock: StockIdentifier`)。
 
+## seed / clock / random の非決定性制御
+- domain event の `occurredAt` は domain service に inject された `Clock` から取得する (domain が `Date.now()` を直呼びしない)。
+- aggregate の識別子生成は `IdGenerator` 型クラス / interface に差し替え、テストで固定 ID を inject する。
+- contract test でイベントのタイムスタンプを固定し、snapshot test の flaky を防ぐ。
+
 ## 推奨証拠
 - bounded context ごとの import / dependency rule を arch test 化。
 - domain event / outbox / integration event を contract test で固定。

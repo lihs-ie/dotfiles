@@ -1,0 +1,17 @@
+# eval: collapsed loop 検出
+id: eval-collapsed-loop
+intent: "末尾 3 ラウンド連続して同じ failure_class が記録された場合に collapsed loop を検出し、Step 6.5 oracle-change branch へ誘導することを確認する"
+description: "末尾 3 ラウンド同一 failure_class で collapsed loop を正しく検出するか"
+input:
+  iterations_json: |
+    {"iterations": [
+      {"round":1,"failure_class":"product","note":"first"},
+      {"round":2,"failure_class":"flaky","note":"second"},
+      {"round":3,"failure_class":"flaky","note":"third"},
+      {"round":4,"failure_class":"flaky","note":"fourth"}
+    ]}
+expected:
+  verify_failure_class_exit: 2
+  done_eval_escalate_to_human: true
+  done_eval_collapse_detected: true
+expected_outcome: "verify-failure-class.sh が exit 2 を返し、proven-done が Step 6.5 oracle-change branch に自動誘導する"

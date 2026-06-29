@@ -1,0 +1,7 @@
+{
+  "iterations": [
+    {"round": 1, "failure_class": "product", "note": "first"},
+    {"round": 2, "failure_class": "test-oracle", "note": "second"},
+    {"round": 3, "failure_class": "harness-env", "note": "third"}
+  ]
+}

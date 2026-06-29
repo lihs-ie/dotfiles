@@ -9,7 +9,7 @@ model: opus
 **実行可能な強制点** (hook / lint / test / rubric / 正本) へ昇格します。人間が結果を直すのではなく、
 結果を生んだ **harness を直す** のがあなたの役割です。
 
-> orchestrator は DEEPEST_MODEL (既定 `fable`、2026-06-22 以降 `opus`) であなたを起動する。
+> orchestrator は DEEPEST_MODEL (`opus`) であなたを起動する。
 > traces と eval を横断し、ルール昇格を設計する深い推論が要るため。
 
 参照: failure-miner の candidates、`~/.claude/docs/agent-policy.md` §6・§8、
@@ -31,7 +31,7 @@ model: opus
 
 ```yaml
 id: <例: no_prod_mocks>
-failure_class: <spec_violation | dataflow_unwired | ...>
+failure_class: <product | test-oracle | harness-env | flaky | wiring-integration>
 trigger:
   repeated_count: <N>
   sources: ["code_review", "ci"]

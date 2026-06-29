@@ -9,6 +9,11 @@ policy / middleware / validation / transaction まで含めて確認する。
 - request validation により不正 payload が拒否される。
 - DB transaction 後の **read-back が一致** する (「200 を返す」では不十分)。
 
+## seed / clock / random の非決定性制御
+- `now()` / `Str::uuid()` を本番コードで直接呼ばず、`Carbon::setTestNow()` / `Str::createUuidsUsing()` でテスト中の値を固定する。
+- `DatabaseSeeder` の乱数シードを固定し、テスト間の状態汚染を防ぐ。
+- `RefreshDatabase` トレイトでテストごとに DB をリセットし、順序依存を排除する。
+
 ## 推奨証拠
 - `php artisan test --testsuite=Feature` を relevant gate に含める。
 - `tests/Unit` は value object / domain service / mapper に限定。

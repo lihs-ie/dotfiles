@@ -1,0 +1,5 @@
+{
+  "iterations": [
+    {"round": 1, "failure_class": "unknown-class", "note": "bad class"}
+  ]
+}

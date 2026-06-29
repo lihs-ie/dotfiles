@@ -1,0 +1,15 @@
+# eval: light レーン判定
+id: eval-light-lane
+intent: "Two-lane router が low-risk / must_count ≤ 3 / estimated_files ≤ 5 / boundary_touched=false の条件で light レーンを正しく判定し、通常進行かつ Time budget が 30 分であることを確認する"
+description: "light レーン条件を満たす spec で Two-lane router が light を選択するか"
+input:
+  spec:
+    risk: low
+    must_count: 2
+    estimated_files: 3
+    boundary_touched: false
+expected:
+  router_decision: light
+  time_budget_minutes: 30
+  escalation_required: false
+expected_outcome: "proven-done Step 1.5 が light レーンを選択し、Step 2 へ通常進行する。Time budget は 30 分が適用される"

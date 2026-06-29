@@ -40,6 +40,7 @@
   **owner と expiry を持つ allowlist** (`ci/allowlist.yml`) でのみ許可する。無期限 allowlist は禁止。
 - 指定された **Scope 外** のファイルを変更しない。spec の Non-goals に挙げた変更を勝手に入れない。
 - 既存アーキテクチャ (層構成・依存方向・命名規約) を尊重する。不要な refactor / 将来用抽象化を足さない。
+- **フレーキーテストは `ci/quarantine.yml` に隔離登録**し、無期限隔離は禁止 (`verify-allowlist-expiry.sh --quarantine` で期限切れを検出)。
 
 ## 2. 上流 — 仕様の正規化 (Spec layer)
 
@@ -58,6 +59,20 @@
   `DI` / `routing` / `auth` / `config` / `migration` / `schema` / `public export` /
   `background job` / `event subscription`。
 - `proven-done` の phase 1 はこの spec を **前提に読む**。spec が無ければ spec-curation を先に行う。
+
+## 2.5 Two-lane router — 実装レーン判定
+
+spec 受け取り後、以下の判定式でレーンを決める (proven-done Step 1.5):
+
+| レーン | 条件 | 対応 |
+|---|---|---|
+| **block** | `must_count > 8` OR `estimated_files > 30` OR (`high-risk` AND `boundary_touched=multi`) | 実装を開始せず即エスカレーション |
+| **light** | `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` | Step 2 へ通常進行 |
+| **heavy** | それ以外 | Step 2 へ通常進行 (Time budget は heavy=90min) |
+
+- `boundary_touched=multi`: DI / routing / auth / config / migration / schema / public export / background job / event subscription のうち 2 つ以上を跨ぐ。
+- block レーンは blocking_reasons を列挙し `.agent-evidence/.active` を削除して停止する。
+- light/heavy の区別は Time budget 閾値に影響する (light=30min / heavy=90min)。
 
 ## 3. Done when (完了条件) — 二段門
 
@@ -82,6 +97,7 @@
   - **データフロー配線**: 新規シンボルが本番呼び出し箇所から実参照される。placeholder
     (`[]` / `Nothing` / `undefined` / `err501` / リテラル) を残さない。
 - spec の **Must を全て満たし、Non-goals を侵さない**。
+- `.agent-evidence/iterations.json` の `failure_class` が全て有効な 5 値 enum (`product` / `test-oracle` / `harness-env` / `flaky` / `wiring-integration`) であり、collapsed loop (末尾 3 ラウンド同一 class) が存在しない。
 - 完了報告に **実行コマンド・生成 artifact・wiring map** が含まれる。
 
 ## 4. Evidence required (完了報告に必須の証跡)
@@ -95,6 +111,7 @@
 - **Wiring map** (`wiring-map.json`) — 変更したシンボルと、それを結線した登録点の対応表。
 - **Spec 参照** — 満たした `docs/specs/<feature>.md` のパスと、各 Must の充足根拠。
 - **Remaining risks / assumptions** — 未解消の前提・残リスク。
+- **iterations.json** (`failure_class` 記録) — TDD サイクルごとの試行ログ。
 
 ## 5. Review — rubric と基準
 
@@ -123,6 +140,7 @@
 - implementer は spec が `public` / `open` API シグネチャ不変を Must としている場合、変更前に
   spec amend を要求し orchestrator にエスカレーションする。事後修正 (Round N で破壊 → Round N+1
   で復元) は禁止。public API の互換破壊は spec 改訂 → 同意 → 実装の順で進める。
+- implementer は TDD サイクルごとに `.agent-evidence/iterations.json` に `failure_class` を記録する義務がある。`failure_class` 未記録の試行は **証跡不十分** として static-verifier が FAIL にする。
 
 ## 6. 外側ループ — 自己改善 (failure-mining → promotion)
 
@@ -151,10 +169,10 @@
 
 ---
 
-## 7. 役割とモデル配分 (9 agent)
+## 7. 役割とモデル配分 (9 agent、read-only 4 体が iterations.json を参照)
 
-> **DEEPEST_MODEL = `fable`** — 最深ティア (長時間・横断メタ推論) に使うモデル。
-> **2026-06-22 (Fable 5 提供終了) に `opus` へこの 1 行を書き換える。** 下表の「最深」はこの値を指す。
+> **DEEPEST_MODEL = `opus`** — 最深ティア (長時間・横断メタ推論) に使うモデル。
+> (2026-06-22 に fable から切り替え済み)。下表の「最深」はこの値を指す。
 
 モデルは **境界 (risk 区分) で段階化** する。床は Sonnet、境界跨ぎ (high-risk, §2) は Opus、
 外側ループのメタ作業は DEEPEST_MODEL。
@@ -196,6 +214,8 @@ orchestrator は実装を肩代わりせず、build/test/grep で実ファイル
 | Done = 二段門 | ① `scripts/agent-evidence-gate.sh` (Stop, 構造) + ② `done-evaluator` agent (意味) |
 | 仕様/配線 rubric | `rubric/core/*.md` + `rubric/packs/<lang>.md` (検出言語のみ) を reviewer が参照 |
 | 証跡提出 | `.agent-evidence/` + Stop hook (proven-done 実行中マーカー時のみ発火) |
+| failure_class 記録義務 | `scripts/verify-failure-class.sh` (exit 1: 未知 class / exit 2: collapsed loop) + static-verifier |
+| フレーキー隔離 | `ci/quarantine.yml` + `scripts/verify-allowlist-expiry.sh --quarantine` + CI policy job |
 | merge gate | GitHub required checks (`pr-gate.yml`: 決定論ゲート必須 + AI review opt-in) + artifacts + `GITHUB_STEP_SUMMARY` |
 
 > CI の AI review (Codex / Claude) は **secret がある repo でのみ有効化する opt-in job** とし、
@@ -212,3 +232,23 @@ orchestrator は実装を肩代わりせず、build/test/grep で実ファイル
 - `{{TEST_DOUBLE_DIRS}}` — テストダブルを許可するディレクトリ (既定は §1 の一覧)。
 - `{{WIRING_POINTS}}` — このリポジトリの結線点 (例: cabal exposed-modules, Next.js route, DI container)。
 - `{{SMOKE_COMMANDS}}` — startup / changed-boundary smoke コマンド (v1 は宣言のみ可)。
+
+---
+
+## 10. iterations.json プロトコル
+
+implementer が TDD サイクルで使う試行ログ。`verify-failure-class.sh` が監視する。
+
+### failure_class enum (5値固定)
+| class | 意味 |
+|---|---|
+| `product` | 実装ロジックの誤り |
+| `test-oracle` | テスト自体が間違い / spec 不整合 |
+| `harness-env` | 環境・タイミング・非決定性 (再現性あり) |
+| `flaky` | 非決定的失敗 (CI 環境の順序依存・timing race) |
+| `wiring-integration` | 配線・結線・DI・route 登録の欠落 |
+
+### 自動エスカレーション条件
+- **collapsed loop** (末尾 3 ラウンド同一 class) → Step 6.5 oracle-change branch へ自動誘導。
+- **flaky が 2 ラウンド以上** → `ci/quarantine.yml` への隔離エントリ追加を義務付け。
+- **context 窓 20% 以下** → Step 10 に強制ジャンプし `time-budget-exceeded.md` を残す。

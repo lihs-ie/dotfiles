@@ -20,7 +20,18 @@
 - 本番経路に **test-only bypass** (`NODE_ENV === 'test'` 等) を入れない。
 - placeholder stub (`err501` / `notImplemented` / `todo!()` 等) を本番に残さない。
 - 例外は `ci/allowlist.yml` に **owner / reason / expires_at** 付きで登録する (無期限禁止・期限切れは CI fail)。
+- **フレーキーテストは `ci/quarantine.yml` に隔離登録**する (`failure_class=flaky` が 2 回以上で義務。`verify-allowlist-expiry.sh --quarantine` で期限切れ検出)。
 - spec の Non-goals / Scope 外を変更しない。既存アーキテクチャ・依存方向・命名規約を尊重する。
+
+## Two-lane router — 実装レーン判定 (proven-done Step 1.5)
+
+spec 受け取り後、以下の判定式でレーンを決める:
+
+- **block**: `must_count > 8` OR `estimated_files > 30` OR (`high-risk` AND `boundary_touched=multi`) → 実装を開始せず即エスカレーション。
+- **light**: `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` → 通常進行 (Time budget: light=30min)。
+- **heavy**: それ以外 → 通常進行 (Time budget: heavy=90min)。
+
+`boundary_touched=multi`: DI / routing / auth / config / migration / schema / public export / background job / event subscription のうち 2 つ以上を跨ぐ。
 
 ## Done when (完了条件) — 二段門
 - 要求挙動が **real public entrypoint から到達可能** で、**観測可能挙動を実行 assert** した。
@@ -28,6 +39,8 @@
 - 必要な配線更新が存在する (構造配線 + データフロー配線。結線点は下記)。
 - **① 構造ゲート** (Stop hook `scripts/agent-evidence-gate.sh`): 証跡が非空で揃う。
 - **② 意味ゲート** (done-evaluator agent): spec の Must × evidence を fresh context で照合し done。
+- `.agent-evidence/iterations.json` の `failure_class` が 5 値 enum 内で collapsed loop が無い。
+- **Time budget 強制**: context 窓 20% 以下 / wall clock (light=30min / heavy=90min) 超過 / no-new-evidence (20min 連続で新証拠なし) のいずれかで Step 10 に強制ジャンプし `time-budget-exceeded.md` を残す。
 
 ### このリポジトリの結線点 (Wiring points)
 {{WIRING_POINTS}}

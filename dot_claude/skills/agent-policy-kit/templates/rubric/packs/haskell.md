@@ -9,6 +9,11 @@ cabal `exposed-modules` と app の結線が最頻の未配線点。`Api.hs`→`
 - 新規 export 関数が本番呼び出し箇所から実参照される (`grep -rn '<fn>' src --include='*.hs'`)。
 - server 起動 smoke と該当 endpoint が例外なく流れる。
 
+## seed / clock / random の非決定性制御
+- `getCurrentTime` / `randomRIO` を本番コードで直接呼ばず、`MonadClock` / `MonadRandom` 型クラスに差し替える。
+- テストでは `Identity` monad または fixed seed (`mkStdGen 42`) で決定論的結果を保証する。
+- `QuickCheck` の `replay` オプションでシードを固定し、flaky property test を再現可能にする。
+
 ## 推奨証拠
 - `cabal build all` + `cabal test`。
 - hlint の no-prod-doubles ルール (`*.Mock`/`*.Fake` module の restrict)。

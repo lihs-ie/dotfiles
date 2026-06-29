@@ -1,0 +1,12 @@
+# eval: context 20% 以下での強制ジャンプ
+id: eval-time-budget-exceeded
+intent: "context 窓 20% 以下 / wall clock 超過 / no-new-evidence のいずれかで Step 10 に強制ジャンプし、time-budget-exceeded.md が生成されユーザーへ AskUserQuestion でエスカレーションされることを確認する"
+description: "context 窓 20% 以下で Step 10 に強制ジャンプし time-budget-exceeded.md が生成されるか"
+input:
+  context_remaining_pct: 18
+  current_step: 6
+expected:
+  forced_jump_to_step: 10
+  artifact_created: ".agent-evidence/time-budget-exceeded.md"
+  active_marker_deleted: false
+expected_outcome: "proven-done が Step 10 に強制ジャンプし、time-budget-exceeded.md に blocking findings を記録し、AskUserQuestion でユーザーにエスカレーションする"

@@ -24,6 +24,7 @@ rules:
     when: "dot_claude/docs/agent-policy.md"
     require_one_of:
       - "dot_claude/skills/agent-policy-kit/templates/AGENTS.md.tmpl.literal"
+      - "dot_claude/skills/agent-policy-kit/templates/CLAUDE.md.section.tmpl.literal"
       - "dot_claude/skills/proven-done/SKILL.md"
       - "dot_claude/skills/agent-policy-kit/SKILL.md"
     reason: "正本 (single source of truth) を変えたら、そこから生成される AGENTS テンプレや、参照する orchestrator にも追随が要る。"
@@ -34,3 +35,17 @@ rules:
       - "dot_claude/skills/agent-policy-kit/SKILL.md"
       - "dot_claude/skills/agent-policy-kit/scripts/executable_detect-langs.sh"
     reason: "stack pack は言語検出 (detect-langs) と Apply 手順に結線されないと opt-in 展開されない。"
+
+  - id: quarantine-referenced-in-verify
+    when: "ci/quarantine.yml"
+    require_one_of:
+      - "scripts/verify-allowlist-expiry.sh"
+      - "dot_claude/skills/agent-policy-kit/templates/scripts/executable_verify-allowlist-expiry.sh"
+    reason: "quarantine.yml は verify-allowlist-expiry.sh --quarantine で期限切れチェックされないと dead registry になる。"
+
+  - id: iterations-schema-in-skill
+    when: "dot_claude/agents/implementer.md"
+    require_one_of:
+      - "dot_claude/skills/proven-done/SKILL.md"
+      - "dot_claude/docs/agent-policy.md"
+    reason: "iterations.json スキーマが implementer に追加されたら proven-done SKILL.md か正本から参照される必要がある。"

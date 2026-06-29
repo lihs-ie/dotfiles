@@ -1,0 +1,6 @@
+# quarantine.yml — flaky test quarantine registry
+entries:
+  - test: "FlakySuite.testBar"
+    reason: "network flake"
+    owner: "@lihs-ie"
+    expires_at: "2025-01-01"

@@ -16,8 +16,8 @@ model: sonnet
 ## 手順
 
 1. `incidents/` と過去のレビュー指摘・補正を読む。
-2. **failure class でクラスタ化** する (例: prod-mock 混入 / データフロー未配線 / 偽成功トースト /
-   契約破壊 / config 未配線 / event consumer 不在)。
+2. **failure class でクラスタ化** する (canonical 5 値: `product` / `test-oracle` / `harness-env` /
+   `flaky` / `wiring-integration`)。
 3. 各クラスタについて、§6 の昇格しきい値に照らして **昇格先** を提案する
    (短文ルール / eval / hook / lint / smoke / rubric 拡張)。
 4. 静的に判定できるか・実行時しか判定できないかを切り分け、適切な強制点を選ぶ。
@@ -26,7 +26,7 @@ model: sonnet
 
 ```yaml
 candidates:
-  - failure_class: "<例: dataflow_unwired>"
+  - failure_class: "<例: wiring-integration>"
     occurrences: <回数>
     sources: ["code_review", "ci", "production"]
     summary: "<一行で再発防止ルール>"

@@ -1,6 +1,6 @@
 ---
 name: self-improve
-description: 三層ループの外側ループを駆動する。失敗事例 (incidents/・レビュー指摘・本番補正) を failure-miner でクラスタ化して eval/rule 候補を出し、harness-maintainer で hooks/lints/tests/rubric/正本へ昇格する。incidents → evals → rules/promoted の自己改善を回し、昇格後は新ゲートが発火することを確認する。トリガーは /self-improve、または『失敗をルール化』『再発防止を昇格』『incident を eval に』『harness を直す』『この指摘を二度と出さないように』等。前提: ~/.claude/agents/ の failure-miner / harness-maintainer と、対象 repo の incidents/ evals/ rules/promoted/ memory/lessons/ (無ければ agent-policy-kit で scaffold)。最深モデル (DEEPEST_MODEL = fable、2026-06-22 以降 opus) を使う。
+description: 三層ループの外側ループを駆動する。失敗事例 (incidents/・レビュー指摘・本番補正) を failure-miner でクラスタ化して eval/rule 候補を出し、harness-maintainer で hooks/lints/tests/rubric/正本へ昇格する。incidents → evals → rules/promoted の自己改善を回し、昇格後は新ゲートが発火することを確認する。トリガーは /self-improve、または『失敗をルール化』『再発防止を昇格』『incident を eval に』『harness を直す』『この指摘を二度と出さないように』等。前提: ~/.claude/agents/ の failure-miner / harness-maintainer と、対象 repo の incidents/ evals/ rules/promoted/ memory/lessons/ (無ければ agent-policy-kit で scaffold)。最深モデル (DEEPEST_MODEL = opus、2026-06-22 cutover 完了) を使う。
 ---
 
 # self-improve
@@ -22,10 +22,10 @@ description: 三層ループの外側ループを駆動する。失敗事例 (in
 | 段 | subagent_type | model | 成果物 |
 |---|---|---|---|
 | 1 Mine | failure-miner | sonnet (多数 incident 集約は **DEEPEST_MODEL**) | rule/eval 候補 (yaml) |
-| 2 Promote | harness-maintainer | **DEEPEST_MODEL** (fable→opus 6/22) | `rules/promoted/<id>.yml` + lesson + 昇格物 |
+| 2 Promote | harness-maintainer | **DEEPEST_MODEL** | `rules/promoted/<id>.yml` + lesson + 昇格物 |
 
-> **DEEPEST_MODEL** は `agent-policy.md` §7 で定義 (既定 `fable`、2026-06-22 以降 `opus`)。
-> Agent tool 起動時に `model: "fable"` を渡す (期限後は `model: "opus"` に 1 行変更)。
+> **DEEPEST_MODEL** は `agent-policy.md` §7 で定義 (`opus`、2026-06-22 cutover 完了)。
+> Agent tool 起動時に `model: "opus"` を渡す。
 
 ### Step 1: Mine
 `failure-miner` を起動し、`incidents/` と過去のレビュー指摘・補正を **failure class でクラスタ化** させる。

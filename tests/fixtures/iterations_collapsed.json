@@ -1,0 +1,8 @@
+{
+  "iterations": [
+    {"round": 1, "failure_class": "product", "note": "first"},
+    {"round": 2, "failure_class": "flaky", "note": "second"},
+    {"round": 3, "failure_class": "flaky", "note": "third"},
+    {"round": 4, "failure_class": "flaky", "note": "fourth"}
+  ]
+}

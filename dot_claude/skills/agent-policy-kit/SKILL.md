@@ -41,6 +41,8 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
   (← `templates/evals/*.yml`)、`incidents/` (← `templates/incidents/incident.json`)、
   `rules/promoted/` (← `templates/rules/promoted.yml`)、`memory/lessons/` (← `templates/memory/lesson.md`)。
 - **ci/allowlist.yml**: 空テンプレートを配置 (既存があればスキップ)。
+- **ci/quarantine.yml**: `templates/quarantine.yml` を配置 (既存があればスキップ)。フレーキーテスト隔離レジストリ。
+- **scripts/verify-failure-class.sh**: `templates/scripts/executable_verify-failure-class.sh` からコピー。iterations.json の failure_class 検証。
 - **.claude/settings.json**: PostToolUse(Write|Edit) に `agent-policy-hook.sh` を **追加**、
   Stop に `agent-evidence-gate.sh` を **追加** (既存配列にマージ・消さない)。
 - **.github/workflows/pr-gate.yml**: `templates/pr-gate.yml.tmpl` を配置。決定論ゲート
@@ -54,10 +56,16 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
 ## Phase 3: Apply
 
 1. 上記ファイルを書き込み、`scripts/*.sh` に実行権限を付与する。
+1a. `ci/quarantine.yml` を配置する (templates/quarantine.yml からコピー、既存があればスキップ)。
+1b. `scripts/verify-failure-class.sh` を配置し `chmod +x` する (templates/scripts/executable_verify-failure-class.sh から)。
 2. `.gitignore` に `.agent-evidence/` を追加 (証跡はローカル生成・CI で再生成)。
 3. **スモークテスト of the kit 自体**: わざと違反を作って各 verify スクリプト (no-prod-doubles /
    test-bypass / no-stub-placeholder / wiring / allowlist-expiry) が exit 1 する/正常時に exit 0 する、を
    一度確認し、確認後にダミー違反を消す。
+3a. `bash scripts/verify-failure-class.sh tests/fixtures/iterations_valid.json` (exit 0) と
+    `bash scripts/verify-failure-class.sh tests/fixtures/iterations_collapsed.json` (exit 2) を確認する。
+    fixture が無い場合はインラインで作成して確認する。
+3b. `bash scripts/verify-allowlist-expiry.sh --quarantine ci/quarantine.yml` (exit 0, 空 quarantine) を確認する。
 4. 適用結果を要約: 何を新規作成し、何にマージし、何をスキップしたか。
 5. 次アクションを案内: 「`/proven-done <task>` で中心ループを、`/self-improve` で外側ループを駆動できる」。
 

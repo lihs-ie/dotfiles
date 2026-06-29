@@ -17,6 +17,8 @@ langs=""
 [ -f composer.json ] && langs="${langs}php "
 { [ -f pyproject.toml ] || [ -f setup.py ]; } && langs="${langs}python "
 [ -f Cargo.toml ] && langs="${langs}rust "
+[ -n "$(find . -maxdepth 3 -name '*.swift' -not -path '*/.*' 2>/dev/null | head -1)" ] && langs="${langs}swift "
+{ [ -f build.gradle.kts ] || [ -f build.gradle ] || [ -n "$(find . -maxdepth 3 -name '*.kt' -not -path '*/.*' 2>/dev/null | head -1)" ]; } && langs="${langs}kotlin "
 echo "languages=${langs:-unknown}"
 
 # モノレポ構成

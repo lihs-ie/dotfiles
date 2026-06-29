@@ -1,0 +1,16 @@
+# eval: block レーン — 即エスカレーション
+id: eval-block-lane
+intent: "Two-lane router が block 条件 (must_count > 8 / estimated_files > 30 / high-risk かつ boundary_touched=multi のいずれか) に該当する場合に、実装を開始せず即エスカレーションし .active マーカーを削除することを確認する"
+description: "block レーン条件で即エスカレーションが発動するか"
+input:
+  spec:
+    risk: high-risk
+    must_count: 9
+    estimated_files: 35
+    boundary_touched: multi
+expected:
+  router_decision: block
+  implementation_started: false
+  escalation_required: true
+  active_marker_deleted: true
+expected_outcome: "proven-done Step 1.5 が block レーンを判定し、blocking_reasons を列挙して .agent-evidence/.active を削除し、実装を開始せず即停止する"

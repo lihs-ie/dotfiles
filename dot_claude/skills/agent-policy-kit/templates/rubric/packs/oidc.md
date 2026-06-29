@@ -10,6 +10,11 @@ end-to-end で検証する。
 - 保護 API / page が **新 session で通る** (read-back)。
 - logout / token refresh の read-back が検証されている。
 
+## seed / clock / random の非決定性制御
+- トークン有効期限の検証は DI された `Clock` を使い (`iat` + `exp` を `Clock.now()` と比較)、テストで時刻を固定する。
+- PKCE `code_verifier` / `state` の乱数生成を seeded RNG でテスト可能にする。
+- token refresh テストでは `Clock` を進め、期限切れトークンの挙動を決定論的に確認する。
+
 ## 推奨証拠
 - contract test で IdP metadata / expected token response shape を固定。
 - E2E で「login 開始→IdP→callback→session 作成→保護画面 read-back」。
