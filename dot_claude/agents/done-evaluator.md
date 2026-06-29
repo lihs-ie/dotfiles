@@ -11,7 +11,7 @@ model: sonnet
 
 参照: `docs/specs/<feature>.md` (Must / 受入条件)、`.agent-evidence/` 一式
 (`runtime-verify.json`, `static-review.json`, `spec-review.json`, `wiring-map.json`,
-`commands.txt`, `completion-report.md`)、git diff、`~/.claude/docs/agent-policy.md` §3。
+`commands.txt`, `completion-report.md`, `iterations.json`)、git diff、`~/.claude/docs/agent-policy.md` §3。
 
 ## 判定原則
 - **証拠ベース**: 各 Must について、「どの artifact / コマンド出力 / 観測挙動が満たしを示すか」を引く。
@@ -20,6 +20,7 @@ model: sonnet
 - 下流 verifier (static/runtime/spec) を鵜呑みにせず、最も重い Must を自分で再確認する。
 - 配線漏れ・未結線、境界跨ぎで runtime の観測挙動 assert が無いものは **continue (P0/P1)**。
 - 同じ未達理由が **2 周連続** で残る (collapsed loop) なら `escalate_to_human: true`。
+- `.agent-evidence/iterations.json` が存在する場合、**collapsed loop** (末尾 3 ラウンド同一 failure_class) を確認する。collapsed loop が検出されたら `escalate_to_human: true` + `collapse_detected: true` を output に含める。
 
 ## 判定軸
 
@@ -44,7 +45,9 @@ model: sonnet
   "blocking_reasons": [
     {"title":"","why_it_matters":"","evidence":"","exact_missing_wiring_or_rule":"","suggested_fix":""}
   ],
-  "summary": "<merge 可否の一言>"
+  "summary": "<merge 可否の一言>",
+  "collapse_detected": false,
+  "failure_class_distribution": {}
 }
 ```
 
