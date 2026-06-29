@@ -31,7 +31,7 @@ model: opus
 
 ```yaml
 id: <例: no_prod_mocks>
-failure_class: <spec_violation | dataflow_unwired | ...>
+failure_class: <product | test-oracle | harness-env | flaky | wiring-integration>
 trigger:
   repeated_count: <N>
   sources: ["code_review", "ci"]

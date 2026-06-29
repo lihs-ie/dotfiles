@@ -1,7 +1,7 @@
 # rules/promoted/<id>.yml — harness-maintainer が昇格したルールの記録。
 # 正本 (agent-policy.md) / hook / lint / smoke / rubric のどこへ昇格したかを残す。
 id: <no_prod_mocks>
-failure_class: <spec_violation | dataflow_unwired | ...>
+failure_class: <product | test-oracle | harness-env | flaky | wiring-integration>
 trigger:
   repeated_count: <2>
   sources: ["code_review", "ci"]

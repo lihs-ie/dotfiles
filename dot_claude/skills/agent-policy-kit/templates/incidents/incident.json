@@ -2,7 +2,7 @@
   "id": "<2026-06-12-pr-481>",
   "date": "<2026-06-12>",
   "source": "code_review | ci | production | manual_correction",
-  "failure_class": "<dataflow_unwired | prod_mock | false_success_toast | contract_breach | config_unwired | event_no_consumer>",
+  "failure_class": "<product | test-oracle | harness-env | flaky | wiring-integration>",
   "summary": "<一行: 何が起きたか>",
   "verified_facts": [
     "<POST /api/settings returned 200>",
