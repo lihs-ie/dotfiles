@@ -1,0 +1,11 @@
+# eval: 未知 failure_class 検出
+id: eval-unknown-failure-class
+description: "未知 failure_class を verify-failure-class.sh が exit 1 で検出するか"
+input:
+  iterations_json: |
+    {"iterations": [
+      {"round":1,"failure_class":"bad-class","note":"invalid"}
+    ]}
+expected:
+  verify_failure_class_exit: 1
+  static_verifier_verdict: "FAIL"

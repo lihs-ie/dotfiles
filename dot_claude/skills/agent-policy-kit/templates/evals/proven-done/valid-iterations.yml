@@ -1,0 +1,13 @@
+# eval: 正常な iterations.json
+id: eval-valid-iterations
+description: "正常な iterations.json で verify-failure-class.sh が exit 0 を返すか"
+input:
+  iterations_json: |
+    {"iterations": [
+      {"round":1,"failure_class":"product","note":"first"},
+      {"round":2,"failure_class":"test-oracle","note":"second"},
+      {"round":3,"failure_class":"harness-env","note":"third"}
+    ]}
+expected:
+  verify_failure_class_exit: 0
+  static_verifier_verdict: "PASS"

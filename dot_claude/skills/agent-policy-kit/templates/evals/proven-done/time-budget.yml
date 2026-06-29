@@ -1,0 +1,10 @@
+# eval: context 20% 以下での強制ジャンプ
+id: eval-time-budget-exceeded
+description: "context 窓 20% 以下で Step 10 に強制ジャンプし time-budget-exceeded.md が生成されるか"
+input:
+  context_remaining_pct: 18
+  current_step: 6
+expected:
+  forced_jump_to_step: 10
+  artifact_created: ".agent-evidence/time-budget-exceeded.md"
+  active_marker_deleted: false

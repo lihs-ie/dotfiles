@@ -1,0 +1,13 @@
+# eval: flaky 2回以上で quarantine 義務
+id: eval-flaky-quarantine-obligation
+description: "failure_class=flaky が 2 ラウンド以上で quarantine.yml への隔離エントリ追加が義務付けられるか"
+input:
+  iterations_json: |
+    {"iterations": [
+      {"round":1,"failure_class":"product","note":"first"},
+      {"round":2,"failure_class":"flaky","note":"flaky1"},
+      {"round":3,"failure_class":"flaky","note":"flaky2"}
+    ]}
+expected:
+  quarantine_yml_entry_required: true
+  implementer_obligation: "ci/quarantine.yml にエントリ追加"
