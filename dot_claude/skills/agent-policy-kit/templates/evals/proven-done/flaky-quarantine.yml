@@ -1,5 +1,6 @@
 # eval: flaky 2回以上で quarantine 義務
 id: eval-flaky-quarantine-obligation
+intent: "failure_class=flaky が 2 ラウンド以上記録された場合に quarantine.yml への隔離エントリ追加が実装者に義務付けられることを確認する"
 description: "failure_class=flaky が 2 ラウンド以上で quarantine.yml への隔離エントリ追加が義務付けられるか"
 input:
   iterations_json: |
@@ -11,3 +12,4 @@ input:
 expected:
   quarantine_yml_entry_required: true
   implementer_obligation: "ci/quarantine.yml にエントリ追加"
+expected_outcome: "proven-done が implementer に ci/quarantine.yml へのエントリ追加を義務付け、verify-allowlist-expiry.sh --quarantine が期限切れを検出できる状態にする"

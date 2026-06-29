@@ -1,5 +1,6 @@
 # eval: 未知 failure_class 検出
 id: eval-unknown-failure-class
+intent: "canonical 5 値 enum 以外の failure_class が iterations.json に記録された場合に verify-failure-class.sh が exit 1 を返し、static-verifier が FAIL を出すことを確認する"
 description: "未知 failure_class を verify-failure-class.sh が exit 1 で検出するか"
 input:
   iterations_json: |
@@ -9,3 +10,4 @@ input:
 expected:
   verify_failure_class_exit: 1
   static_verifier_verdict: "FAIL"
+expected_outcome: "verify-failure-class.sh が exit 1 を返し、static-verifier が FAIL を出して実装差し戻しを発動する"

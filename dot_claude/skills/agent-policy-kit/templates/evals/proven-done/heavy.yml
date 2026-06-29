@@ -1,0 +1,15 @@
+# eval: heavy レーン判定
+id: eval-heavy-lane
+intent: "Two-lane router が light でも block でもない条件 (must_count 4-8 / estimated_files 6-30 等) で heavy レーンを正しく判定し、Time budget が 90 分であることを確認する"
+description: "heavy レーン条件を満たす spec で Two-lane router が heavy を選択するか"
+input:
+  spec:
+    risk: low
+    must_count: 5
+    estimated_files: 12
+    boundary_touched: false
+expected:
+  router_decision: heavy
+  time_budget_minutes: 90
+  escalation_required: false
+expected_outcome: "proven-done Step 1.5 が heavy レーンを選択し、Step 2 へ通常進行する。Time budget は 90 分が適用される"

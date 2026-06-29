@@ -1,0 +1,15 @@
+# eval: oracle-change branch 誘導
+id: eval-oracle-change-branch
+intent: "runtime-verifier が FAIL を返し spec-review.json に oracle_change_suspected=true が含まれる場合に、proven-done が Step 6.5 oracle-change branch に誘導し AskUserQuestion で spec amend 提案をユーザーに提示することを確認する"
+description: "oracle_change_suspected=true 時に spec amend 提案がユーザーへ提示されるか"
+input:
+  runtime_verifier_result: FAIL
+  spec_review:
+    oracle_change_suspected: true
+  consecutive_oracle_change_rounds: 1
+expected:
+  next_step: "6.5-oracle-change"
+  spec_grader_model: DEEPEST_MODEL
+  ask_user_question_called: true
+  implementer_continues: false
+expected_outcome: "proven-done が Step 6.5 oracle-change branch に進み、spec-grader が DEEPEST_MODEL で spec amend 提案を出し、AskUserQuestion でユーザーに提示して承認を待つ"
