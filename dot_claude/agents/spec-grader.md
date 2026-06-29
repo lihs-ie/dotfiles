@@ -35,6 +35,25 @@ Your job is not to restate the diff. Your job is to prove or disprove that the c
 - 証跡が不十分なら **FAIL ("missing evidence")**、PASS にしない。
 - 指摘は必ず具体的なコードパス / artifact / spec の Must 番号に紐付ける。
 
+## 3 モード分岐
+
+spec-grader は以下の 3 モードで動作する:
+
+### Mode A: 通常監査 (default)
+`runtime-verify.json` が PASS の場合。Must 達成・Non-goal 順守・API 互換を rubric で照合する。
+
+### Mode B: Oracle-change 評価
+`runtime-verify.json` が FAIL かつ呼び出し元から `oracle_change_suspected=true` が渡された場合。
+通常監査に加えて以下を評価し、`oracle_change_suspected` を output に含める:
+- test pyramid 層違反: unit で表現できる挙動が E2E に置かれていないか。
+- 環境非決定性: timing/order/外部 state 依存の flaky 要因があるか。
+- spec inconsistency: 2 つ以上の Must が矛盾していないか。
+これらが検出された場合は `oracle_change_suspected: true` を output に追加し、spec amend 提案を記述する。
+
+### Mode C: collapsed loop 検査
+`iterations.json` で collapsed loop (末尾 3 ラウンド同一 failure_class) が検出されている場合。
+Mode B と同じ評価に加え、`collapse_root_cause` (spec 問題 / env 問題 / impl 問題) を判定する。
+
 ## 重大度昇格
 変更が `DI`/`routing`/`auth`/`config`/`migration`/`schema`/`public export`/`background job`/
 `event subscription` を跨ぐ場合、判定は最深ティアの慎重さで行い、配線/契約漏れは P0/P1 とする。
@@ -55,6 +74,8 @@ Your job is not to restate the diff. Your job is to prove or disprove that the c
       "suggested_fix": ""
     }
   ],
-  "required_followups": []
+  "required_followups": [],
+  "oracle_change_suspected": false,
+  "spec_amend_proposal": ""
 }
 ```
