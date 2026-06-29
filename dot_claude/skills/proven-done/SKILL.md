@@ -158,10 +158,16 @@ Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
 3. done-evaluator が `done` → 成功。
 
 **Time budget 強制** (context 枯渇防止):
-- context 窓の残り **20% 以下** になったら、現在 step に関わらず **Step 10 (後始末と報告)** に強制ジャンプする。
-- 強制ジャンプ時は blocking findings と現在状態を `.agent-evidence/time-budget-exceeded.md` に書いてから停止する。
-- 翌セッションは `time-budget-exceeded.md` を読んで Step 3 から再開できる。
-- context 20% 閾値を下回る前に警告を出し、ユーザーに続行 or 停止を選ばせることが望ましい。
+
+以下のいずれかに該当したら、現在 step に関わらず **Step 10 (後始末と報告)** に強制ジャンプする:
+- context 窓の残り **20% 以下** になった。
+- **wall clock 経過時間** が閾値を超えた: light タスクで **30 分** (light=30min)、heavy タスクで **90 分** (heavy=90min)。
+- **no-new-evidence**: 直近 **20 分間** に新たな証拠・進展が一切得られていない (同じ blocking finding を繰り返しているだけ)。
+
+強制ジャンプ時は blocking findings と現在状態を `.agent-evidence/time-budget-exceeded.md` に書いてから停止し、
+`AskUserQuestion(...)` でユーザーに状況を提示してエスカレーションする。
+翌セッションは `time-budget-exceeded.md` を読んで Step 3 から再開できる。
+context 20% 閾値を下回る前に警告を出し、ユーザーに続行 or 停止を選ばせることが望ましい。
 
 ### Step 10: 後始末と報告
 - `.agent-evidence/.active` を **削除** する。
