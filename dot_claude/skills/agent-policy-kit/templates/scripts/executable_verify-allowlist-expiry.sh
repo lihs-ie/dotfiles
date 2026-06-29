@@ -22,7 +22,7 @@ check_expiry_file() {
   expired="$(awk -v today="$today" '
     function val(s){ sub(/^[^:]*:[[:space:]]*/,"",s); gsub(/^["\x27]|["\x27]$/,"",s); return s }
     /^[[:space:]]*-[[:space:]]*(rule|test):/ { entry=val($0); path=""; expiry="" }
-    /^[[:space:]]*(path|test):/ { path=val($0) }
+    /^[[:space:]]{2,}(path|test):/ { path=val($0) }
     /^[[:space:]]*expires_at:/ { expiry=val($0); if (expiry=="" || expiry < today) print "  " entry " (" path ") expires_at=" (expiry==""?"<MISSING>":expiry) }
   ' "$f")"
 
