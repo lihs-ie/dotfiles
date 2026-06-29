@@ -1,0 +1,6 @@
+# quarantine.yml — flaky test quarantine registry
+entries:
+  - test: "FlakySuite.testFoo"
+    reason: "intermittent timing issue"
+    owner: "@lihs-ie"
+    expires_at: "2027-12-31"
