@@ -37,6 +37,9 @@
 - 本番経路に **test-only bypass** (`NODE_ENV === 'test'` 等) を入れない。
 - 例外は `ci/allowlist.yml` に **owner / reason / expires_at** 付きで登録する (無期限禁止・期限切れは CI fail)。
 - **フレーキーテストは `ci/quarantine.yml` に隔離登録**する (`verify-allowlist-expiry.sh --quarantine` で期限切れ検出)。
+- **verify スクリプトの修正は必ず `dot_claude/skills/agent-policy-kit/templates/scripts/` にテンプレートに先に入れてから
+  sync (Detect→Diff→Apply, dry-run 既定) で配布する。このリポジトリの
+  `scripts/verify-*.sh` への直接修正は禁止** (この repo は kit の配布元かつ消費 repo 第 0 号でもある — §agent-policy.md 1 の再生成)。
 - 指定スコープ外を変更しない。既存アーキテクチャ・依存方向・命名規約を尊重する。
 
 ## Two-lane router — 実装レーン判定 (proven-done Step 1.5)

@@ -13,9 +13,17 @@ description: モック濫用と未配線完了報告を防ぐ三層ループの�
 
 1. 引数 `<task>` を受け取る。無ければユーザーに 1 行で要求を尋ねる。
 2. リポジトリルート (`git rev-parse --show-toplevel`) を確認。
-3. このリポジトリに `AGENTS.md` と `wiring_manifest.yml` と `scripts/verify-no-prod-doubles.sh`
-   が**揃っているか**確認する。**無ければ** 「先に `agent-policy-kit` skill でガードを scaffold
-   してください」と案内し、ユーザー承認の上で agent-policy-kit を実行してから続行する。
+3. このリポジトリに `AGENTS.md` と `wiring_manifest.yml` と、6 本の verify スクリプト
+   (`scripts/verify-no-prod-doubles.sh` `scripts/verify-test-bypass.sh` `scripts/verify-wiring.sh`
+   `scripts/verify-no-stub-placeholder.sh` `scripts/verify-allowlist-expiry.sh`
+   `scripts/verify-failure-class.sh`) が**揃っているか**確認する。**いずれか欠落**なら「先に
+   `agent-policy-kit` skill でガードを scaffold してください」と案内し、ユーザー承認の上で
+   agent-policy-kit を実行してから続行する。
+   揃っていれば `bash scripts/kit-sync-check.sh --check` で各スクリプトの `KIT_VERSION` が
+   kit の最新版 (`kit-manifest.yml`) と一致するか (freshness) を検査する。exit 2 (陳腐化) なら
+   **警告**して `agent-policy-kit` skill の Sync (Detect→Diff→Apply, dry-run 既定) 実行を促すが、
+   ブロックはせず続行する。`scripts/kit-sync-check.sh` 自体が無ければ freshness 検査を skip し、
+   その旨を警告する。
 4. **spec 前提**: `docs/specs/<feature>.md` が在るか確認する。**無ければ** Step 1 で先に仕様化する
    (`/grill-me` で人間と認識合わせ → spec-curator で正規化)。
 5. `.agent-evidence/` を作り、**実行中マーカー** を立てる:

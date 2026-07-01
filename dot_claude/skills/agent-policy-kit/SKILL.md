@@ -29,8 +29,10 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
 - **ast-grep**: `.ast-grep/rules/` に `no-prod-doubles.yml` `no-test-bypass.yml` を追加。
 - **hlint** (Haskell): backend の既存 `.hlint.yaml` に `templates/hlint/no-prod-doubles.yaml` を MERGE。
 - **scripts/**: `verify-no-prod-doubles.sh` `verify-test-bypass.sh` `verify-wiring.sh`
-  `verify-no-stub-placeholder.sh` `verify-allowlist-expiry.sh` `agent-policy-hook.sh`
-  `agent-evidence-gate.sh` を `scripts/` にコピー (chmod +x)。
+  `verify-no-stub-placeholder.sh` `verify-allowlist-expiry.sh` `verify-failure-class.sh`
+  `kit-sync-check.sh` `agent-policy-hook.sh` `agent-evidence-gate.sh` を `scripts/` にコピー
+  (chmod +x)。各ファイルは `templates/scripts/executable_*.sh` の `# KIT_VERSION: <semver>` 行を
+  そのまま引き継ぐ (kit 側 `kit-manifest.yml` の該当 sha256 と紐付く — 版管理・sync は下記 §Sync)。
 - **rubric/**: `rubric/core/wiring.md` `rubric/core/spec.md` (必須) と、**検出言語に対応する**
   `rubric/packs/<lang>.md` (nextjs/laravel/go/haskell/python/oidc/ddd のうち該当のみ) をコピー。
 - **wiring_manifest.yml**: `templates/wiring_manifest.yml.tmpl` の `{{WIRING_RULES}}` を、
@@ -66,10 +68,43 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
     `bash scripts/verify-failure-class.sh tests/fixtures/iterations_collapsed.json` (exit 2) を確認する。
     fixture が無い場合はインラインで作成して確認する。
 3b. `bash scripts/verify-allowlist-expiry.sh --quarantine ci/quarantine.yml` (exit 0, 空 quarantine) を確認する。
+3c. `bash scripts/kit-sync-check.sh --check` (欠落=exit 1 / 陳腐化=exit 2 / all-ok=exit 0) を確認する
+    (proven-done Step 0 の freshness 検査が使う経路と同一)。
 4. 適用結果を要約: 何を新規作成し、何にマージし、何をスキップしたか。
 5. 次アクションを案内: 「`/proven-done <task>` で中心ループを、`/self-improve` で外側ループを駆動できる」。
+
+## Sync (Detect→Diff→Apply, KIT_VERSION 追随)
+
+`agent-policy-kit` が配布した `scripts/verify-*.sh` は消費 repo にコピーされたまま置かれる
+(中央実行はしない — CI (`pr-gate.yml`) が repo 内スクリプトを直接叩く前提を崩さないため)。
+kit 側テンプレート (`templates/scripts/executable_*.sh`) が更新されたら、次の手順で消費 repo に
+追随させる。判定ロジックは `kit-sync-check.sh` に一本化し、二重実装しない。
+
+### Detect
+1. kit 側 (このリポジトリ) で `bash scripts/kit-manifest-update.sh` を実行し、
+   `kit-manifest.yml` (単一 `KIT_VERSION` + per-file sha256) をテンプレートの現状で再生成する。
+2. `bash scripts/kit-sync-check.sh --self` でテンプレートと `kit-manifest.yml` の整合を確認する
+   (exit 0 でなければ手順 1 をやり直す)。
+3. 消費 repo 側で `bash scripts/kit-sync-check.sh --check` を実行し、現行 `KIT_VERSION` と
+   kit 最新版を比較する。exit 0 = 最新 (sync 不要) / exit 1 = 欠落 (先に kit を適用) /
+   exit 2 = 陳腐化 (sync 対象あり)。
+
+### Diff (dry-run — 既定)
+exit 2 (陳腐化) のとき、`kit-sync-check.sh --check` の出力に挙がった各ファイルについて
+「テンプレート最新版 vs 消費 repo 現行版」の diff を提示する。**この時点では一切書き込まない**
+(既定は dry-run)。
+
+### Apply (ユーザーの明示承認後にのみ実行)
+1. 提示した diff への **承認** をユーザーから得る (承認するまで書き込まない)。
+2. 承認された各ファイルを `templates/scripts/executable_<name>` → `scripts/<name>` に `cp` し
+   `chmod +x` する (kit 側テンプレートのみをコピー元とし、消費 repo のコピーへ直接手を入れない —
+   §1 のメタルール「テンプレートに先に入れてから配布」と同じ理由)。
+3. 再度 `bash scripts/kit-sync-check.sh --check` を実行し exit 0 (all-ok) を確認する。
 
 ## 不変条件
 - 既存ファイル (CLAUDE.md, .hlint.yaml, .claude/settings.json, sgconfig.yml) は **追記/マージ** であり全置換しない。
 - 方針変更は正本 `~/.claude/docs/agent-policy.md` を直してから再適用する (生成物を直接編集しない)。
 - allowlist は無期限を作らない。rubric pack は検出言語のみ展開する (未使用スタックを抱えない)。
+- verify スクリプトの修正は必ずテンプレートに先に入れてから sync で配布する。消費 repo のコピーへの
+  直接修正は禁止 (§Sync)。
+- Sync の既定は **dry-run**。ユーザーが承認するまで書き込まない (§Sync Apply)。
