@@ -38,6 +38,14 @@ run_test "verify-failure-class unknown class" \
   "bash scripts/verify-failure-class.sh tests/fixtures/iterations_unknown_class.json" \
   1
 
+run_test "verify-failure-class green with failure_class" \
+  "bash scripts/verify-failure-class.sh tests/fixtures/iterations_green_with_class.json" \
+  1
+
+run_test "verify-failure-class missing phase" \
+  "bash scripts/verify-failure-class.sh tests/fixtures/iterations_missing_phase.json" \
+  1
+
 run_test "verify-allowlist-expiry quarantine valid" \
   "bash scripts/verify-allowlist-expiry.sh --quarantine tests/fixtures/quarantine_valid.yml" \
   0

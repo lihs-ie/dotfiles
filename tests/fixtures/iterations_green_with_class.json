@@ -1,0 +1,6 @@
+{
+  "iterations": [
+    {"n": 1, "phase": "red", "approach_id": "A1", "failure_class": "product", "rca_one_line": "guard missing"},
+    {"n": 2, "phase": "green", "approach_id": "A1", "failure_class": "product", "note": "failure_class on green pollutes the collapsed-loop window"}
+  ]
+}

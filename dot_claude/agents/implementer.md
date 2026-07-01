@@ -70,13 +70,17 @@ PostToolUse の policy hook が編集ごとにガードを回すので、違反�
 
 ## failure_class 義務と flaky 隔離手順
 
-### failure_class の記録義務
+### failure_class の記録義務 (phase=red のみ)
 
 TDD サイクルで RED になるたびに、`.agent-evidence/iterations.json` に **failure_class を必ず記録** する。
 未記録のまま GREEN に進むことは prohibited (static-verifier が証跡不十分で FAIL にする)。
 
-`failure_class` は 5 値のみ (`product` / `test-oracle` / `harness-env` / `flaky` / `wiring-integration`)。
-該当が不明なら `product` を仮置きし、note に「要確認」と書く。
+- `failure_class` は **phase=red の entry にのみ** 書く。5 値のみ
+  (`product` / `test-oracle` / `harness-env` / `flaky` / `wiring-integration`)。
+  red で該当が不明なら `product` を仮置きし、note に「要確認」と書く。
+- **phase=green / refactor の entry には failure_class を書かない** (green は失敗ではない。
+  混入すると collapsed-loop 窓が汚染され、健全な red→green 収束が誤検知される)。
+  phase=pivot は任意 (書くなら 5 値)。この規則は verify-failure-class.sh が機械検査する。
 
 ### oracle_change_request 起票プロトコル (test-oracle 検出時の必須手順)
 
@@ -100,15 +104,15 @@ test を黙って書き換えると collapsed loop の温床になり実害が�
 4. **承認待ち中は実装コードへの追加 Edit を一切行わない** (oracle 確定前に GREEN を狙う行為禁止)。 証跡整備 (commands.txt / wiring-map.json の現状反映) のみ可。
 5. 承認後に spec が更新されたら、 iterations.json の **新 entry** で再 RED から再開する (旧 entry は遡及修正しない、 append-only)。
 
-#### collapsed loop 検出後に oracle と判明したケース (3 連続 product 後の救済)
+#### collapsed loop (exit 2) 検出後に oracle と判明したケース
 
-シナリオ: iter 1-3 を `failure_class=product` で記録後、 deep dive で root cause が test-oracle と判明。 verify-failure-class.sh は **旧 3 entry** を見て exit 2 (collapsed loop) を出すが、 oracle_change_request 起票はこの局面でも有効:
-
-1. iter 4 を **`phase=pivot, approach_id=oracle-escalation, failure_class=test-oracle`** で append する。 iter 1-3 の旧 entry は触らない (append-only)。
-2. `oracle_change_request` トップレベル object を起票する (上記 2)。 `raised_at_iteration` は **oracle と最初に判明した iter 番号 (= 3)** を入れる。 順序: 必ず **oracle 起票を先に書き、その後 iter 4 を append** すること (逆順にすると raised_at_iteration の解釈が「最新 iter = 4」 と曖昧化する)。
-3. **append-only の適用範囲は `iterations[]` のみ**。 トップレベル field (`oracle_change_request` / `flaky_quarantine_appended`) の null → object 書き換えは違反ではない。
-4. verify-failure-class.sh の **現実挙動**: oracle_change_request の存在を読まず exit 2 を出し続ける。 これは false positive として orchestrator が判定する責任 — `oracle_change_request.blocking=true` の存在を併せて見て、 exit 2 を override してエスカチェーン (spec-grader → AskUserQuestion → spec-curator) へ進む。
-5. implementer は exit 2 で turn を終えて待機する。 sh 自体の修正は別 issue (本 protocol は documentation 層の優先順位を定めるもの)。
+verify-failure-class.sh の exit 2 (**末尾 3 red** が同一 failure_class) は「エラー」ではなく
+**Step 6.5 oracle-change branch への routing シグナル**。deep dive で root cause が test-oracle と
+判明したら、`oracle_change_request` を起票し (上記 2。`raised_at_iteration` = oracle と最初に判明した
+iter 番号)、続けて `phase=pivot, approach_id=oracle-escalation, failure_class=test-oracle` の entry を
+append して turn を終える。orchestrator が Step 6.5 の審査を駆動する。
+append-only の対象は `iterations[]` のみ — トップレベル field (`oracle_change_request` /
+`flaky_quarantine_appended`) の null → object 書き換えは違反ではない。
 
 ### flaky テストの隔離手順
 
@@ -158,7 +162,9 @@ verify-failure-class.sh がこのファイルを読んで collapsed loop と未�
 書き方ルール:
 - **単一 JSON file** (NDJSON ではない、 全体を 1 object に包む)
 - **`iterations[]` は append-only** (書換・削除禁止、 旧 entry の遡及修正禁止)
-- `failure_class` は 5 enum 厳守 (下記)、 不明なら `"product"` 仮置きで `note` に「要確認」 と書く
+- `phase` は 4 値必須 (`red` / `green` / `refactor` / `pivot`)
+- `failure_class` は **phase=red のみ必須・green / refactor は禁止・pivot は任意** (5 enum 厳守。
+  red で不明なら `"product"` 仮置きで `note` に「要確認」 と書く)
 - `first_red.reason` が `"assertion_failure"` 以外 (compile/import error / typo) は **偽 RED** で 3-strike カウントに含めない
 
 完全な schema (例):
@@ -173,7 +179,7 @@ verify-failure-class.sh がこのファイルを読んで collapsed loop と未�
     {
       "n": 1,
       "started_at": "2026-06-29T10:05:00Z",
-      "phase": "red | green | refactor | pivot",
+      "phase": "red",
       "approach_id": "A1",
       "target_test": "tests/orders.test.ts::empty items returns 400",
       "failure_class": "product | test-oracle | harness-env | flaky | wiring-integration",
@@ -183,6 +189,14 @@ verify-failure-class.sh がこのファイルを読んで collapsed loop と未�
         "reason": "assertion_failure | compile_error | import_missing | typo_false_red",
         "evidence_path": ".agent-evidence/commands.txt:42"
       }
+    },
+    {
+      "n": 2,
+      "started_at": "2026-06-29T10:12:00Z",
+      "phase": "green",
+      "approach_id": "A1",
+      "target_test": "tests/orders.test.ts::empty items returns 400",
+      "note": "全テスト緑 — green には failure_class を書かない"
     }
   ],
   "oracle_change_request": null,

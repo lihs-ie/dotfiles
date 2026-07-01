@@ -46,28 +46,21 @@ runtime-verifier / spec-grader / done-evaluator を **Opus** に昇格する。
 ### iterations.json スキーマ (Step 3 が書き、Step 4/10 が読む)
 
 implementer は `.agent-evidence/iterations.json` に各試行ラウンドを追記する。
-`scripts/verify-failure-class.sh` がこのファイルを読んで collapsed loop と未知 class を検出する。
+**スキーマ正本は implementer.md §iterations.json** — 単一 JSON / append-only /
+`phase` 4 値 (`red`/`green`/`refactor`/`pivot`) / `failure_class` は **phase=red のみ必須・
+green / refactor は禁止・pivot は任意**。ここに複製は置かない (二重正本はドリフトの温床 —
+本 skill と implementer.md のスキーマが乖離した実績があるため参照に統一した)。
 
-```json
-{
-  "iterations": [
-    {
-      "round": 1,
-      "failure_class": "product | test-oracle | harness-env | flaky | wiring-integration",
-      "approach": "アプローチの概要 (1行)",
-      "result": "red | green | pivot | escalate",
-      "note": "失敗理由 または 達成内容 (1行)"
-    }
-  ]
-}
-```
-
-`failure_class` enum:
+`failure_class` enum (5 値):
 - `product` — 実装ロジックの誤り (仕様通りに実装できていない)
 - `test-oracle` — テスト自体が間違い / spec 不整合
 - `harness-env` — 環境・タイミング・非決定性 (flaky と区別: 再現性あり vs なし)
 - `flaky` — 非決定的失敗 (CI 環境の順序依存・timing race)
 - `wiring-integration` — 配線・結線・DI・route 登録の欠落
+
+`scripts/verify-failure-class.sh` の exit code:
+- exit 1 — スキーマ違反 (phase 欠落 / 未知 enum / green・refactor への failure_class 混入)
+- exit 2 — collapsed loop (**末尾 3 red** が同一 failure_class)。エラーではなく Step 6.5 への routing シグナル
 
 ### Step 1: Spec curation
 `docs/specs/<feature>.md` が無ければ、まず **`/grill-me`** で人間と決定木を解消し、
@@ -186,6 +179,6 @@ context 20% 閾値を下回る前に警告を出し、ユーザーに続行 or �
 - reviewer の指摘は必ずコードパス/artifact/Must 番号に紐付ける。抽象的懸念だけで pass/fail しない。
 - 本番パスの test double / test-bypass は allowlist 以外は無条件で差し戻す。
 - `iterations.json` の `failure_class` は 5 値 enum のみ。未知 class は verify-failure-class.sh が exit 1 で検出する。
-- collapsed loop (末尾 3 ラウンド同一 failure_class) は Step 6.5 oracle-change branch に自動誘導する。verify-failure-class.sh が exit 2 で検出する。
+- collapsed loop (末尾 3 **red** ラウンド同一 failure_class — green/refactor/pivot は窓に数えない) は Step 6.5 oracle-change branch に自動誘導する。verify-failure-class.sh が exit 2 で検出する。
 - context 窓 20% 以下で Step 10 に強制ジャンプし `time-budget-exceeded.md` を残す。翌セッションで再開可能にする。
 - フレーキーテスト (`failure_class=flaky`) を 2 回以上検出したら `ci/quarantine.yml` への隔離エントリ追加を implementer に義務付ける。

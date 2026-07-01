@@ -1,5 +1,5 @@
 {
   "iterations": [
-    {"round": 1, "failure_class": "unknown-class", "note": "bad class"}
+    {"n": 1, "phase": "red", "approach_id": "A1", "failure_class": "unknown-class", "rca_one_line": "bad class"}
   ]
 }

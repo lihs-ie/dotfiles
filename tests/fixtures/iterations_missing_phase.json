@@ -1,0 +1,5 @@
+{
+  "iterations": [
+    {"n": 1, "failure_class": "product", "note": "legacy pre-unification entry without phase"}
+  ]
+}
