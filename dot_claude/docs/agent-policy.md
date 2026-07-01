@@ -41,6 +41,10 @@
 - 指定された **Scope 外** のファイルを変更しない。spec の Non-goals に挙げた変更を勝手に入れない。
 - 既存アーキテクチャ (層構成・依存方向・命名規約) を尊重する。不要な refactor / 将来用抽象化を足さない。
 - **フレーキーテストは `ci/quarantine.yml` に隔離登録**し、無期限隔離は禁止 (`verify-allowlist-expiry.sh --quarantine` で期限切れを検出)。
+- **verify スクリプトの修正は必ず `agent-policy-kit` の `templates/scripts/` にテンプレートに先に入れてから
+  sync (Detect→Diff→Apply, dry-run 既定) で配布する。消費 repo に配布された `scripts/verify-*.sh`
+  コピーへの直接修正は禁止** (テンプレートと乖離した直修正はドリフトの温床であり、次回 sync で
+  黙って上書きされる/されない、が repo ごとに異なる不整合を生む)。
 
 ## 2. 上流 — 仕様の正規化 (Spec layer)
 

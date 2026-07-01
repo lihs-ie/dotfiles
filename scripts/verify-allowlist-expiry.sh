@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# KIT_VERSION: 1.0.0
 # agent-policy: allowlist / quarantine の期限切れエントリを検出して fail する。
 # 使い方: verify-allowlist-expiry.sh [--quarantine <file>]
 set -euo pipefail

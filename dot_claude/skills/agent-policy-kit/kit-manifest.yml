@@ -1,0 +1,34 @@
+# kit-manifest.yml — agent-policy-kit 単一 KIT_VERSION + per-file sha256 manifest.
+# 生成: kit-manifest-update.sh。手編集禁止 — templates/scripts/ を直してから再生成する。
+kit_version: "1.0.0"
+files:
+  agent-evidence-gate.sh:
+    template: templates/scripts/executable_agent-evidence-gate.sh
+    sha256: "d64c5056074626c4be21d49edbb50965f564650aa0f28e490e3dfede531f4a78"
+  agent-policy-hook.sh:
+    template: templates/scripts/executable_agent-policy-hook.sh
+    sha256: "bb35a6c7df4e1d0d3e32c4c08e8bbc4dc9eec3625012653bd22bdb5d08d97c48"
+  kit-manifest-update.sh:
+    template: templates/scripts/executable_kit-manifest-update.sh
+    sha256: "abc7e1e595d7124351f648346776e0a7e01297192c6fa3ebee9b69ae860f1d0e"
+  kit-sync-check.sh:
+    template: templates/scripts/executable_kit-sync-check.sh
+    sha256: "e1091a59e4f56e2f4c4ed8f4b0f2f5618c09b2b6c3e2400d020b3116c5fda401"
+  verify-allowlist-expiry.sh:
+    template: templates/scripts/executable_verify-allowlist-expiry.sh
+    sha256: "0e99f45306dd42a14a541d2cf587d69ed01ebf9b2dbc0197b15c1ea17b63d19d"
+  verify-failure-class.sh:
+    template: templates/scripts/executable_verify-failure-class.sh
+    sha256: "fe5e256c600beb61b6068ed16bf3f9b06c8c4fd17ed586e82976455eb47036d9"
+  verify-no-prod-doubles.sh:
+    template: templates/scripts/executable_verify-no-prod-doubles.sh
+    sha256: "db8aea3ed17525400673cab4c00140fb9e2f3c39897d31bcf302b0d2c7230479"
+  verify-no-stub-placeholder.sh:
+    template: templates/scripts/executable_verify-no-stub-placeholder.sh
+    sha256: "9b104f9a86bd54f84c8092aedc7af48baa5189efa85500e0fc1999475898cc0f"
+  verify-test-bypass.sh:
+    template: templates/scripts/executable_verify-test-bypass.sh
+    sha256: "c8424c2e70838c3f05b17d35817e5207752412e5fb4a68bb3a1c5f12fafc456e"
+  verify-wiring.sh:
+    template: templates/scripts/executable_verify-wiring.sh
+    sha256: "8700e4909653546f6127c70c81a8f2aae8a2f1d16948d48d7e07637717ad8da8"

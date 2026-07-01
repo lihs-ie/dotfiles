@@ -38,6 +38,14 @@ run_test "verify-failure-class unknown class" \
   "bash scripts/verify-failure-class.sh tests/fixtures/iterations_unknown_class.json" \
   1
 
+run_test "verify-failure-class green with failure_class" \
+  "bash scripts/verify-failure-class.sh tests/fixtures/iterations_green_with_class.json" \
+  1
+
+run_test "verify-failure-class missing phase" \
+  "bash scripts/verify-failure-class.sh tests/fixtures/iterations_missing_phase.json" \
+  1
+
 run_test "verify-allowlist-expiry quarantine valid" \
   "bash scripts/verify-allowlist-expiry.sh --quarantine tests/fixtures/quarantine_valid.yml" \
   0
@@ -45,6 +53,22 @@ run_test "verify-allowlist-expiry quarantine valid" \
 run_test "verify-allowlist-expiry quarantine expired" \
   "bash scripts/verify-allowlist-expiry.sh --quarantine tests/fixtures/quarantine_expired.yml" \
   1
+
+run_test "kit-sync-check --check ok (vendored matches manifest)" \
+  "bash scripts/kit-sync-check.sh --check --manifest tests/fixtures/kit-sync/manifest.yml --target-dir tests/fixtures/kit-sync/target_ok" \
+  0
+
+run_test "kit-sync-check --check stale (sha256 drift at same KIT_VERSION)" \
+  "bash scripts/kit-sync-check.sh --check --manifest tests/fixtures/kit-sync/manifest.yml --target-dir tests/fixtures/kit-sync/target_stale" \
+  2
+
+run_test "kit-sync-check --check missing (vendored file absent)" \
+  "bash scripts/kit-sync-check.sh --check --manifest tests/fixtures/kit-sync/manifest.yml --target-dir tests/fixtures/kit-sync/target_missing" \
+  1
+
+run_test "kit-sync-check --self (real templates vs real kit-manifest.yml)" \
+  "bash scripts/kit-sync-check.sh --self --manifest dot_claude/skills/agent-policy-kit/kit-manifest.yml" \
+  0
 
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"
