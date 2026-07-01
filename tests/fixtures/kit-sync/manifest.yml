@@ -1,0 +1,6 @@
+# fixture manifest for kit-sync-check.sh tests. Not the real kit-manifest.yml.
+kit_version: "9.9.9"
+files:
+  sample.sh:
+    template: templates/executable_sample.sh
+    sha256: "8e5b45b32c7090f39a7d274afc3120f66847f41d1c23f230c5a8a37df90956f7"

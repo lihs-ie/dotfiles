@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# KIT_VERSION: 1.0.0
 # agent-policy: iterations.json の failure_class を検証する。
 # スキーマ (implementer.md §iterations.json が正本):
 #   - 各 entry は phase (red|green|refactor|pivot) 必須
