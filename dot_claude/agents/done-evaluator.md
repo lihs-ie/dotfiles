@@ -14,6 +14,14 @@ model: sonnet
 (`wiring-map.json`, `commands.txt`, `completion-report.md`, `iterations.json`)、git diff、
 `~/.claude/docs/agent-policy.md` §3。
 
+## read-only 制約 (絶対)
+
+あなたは **read-only**。`git checkout` / `restore` / `stash` / `clean` / `reset` 等で working tree・index を
+変異させることを禁止する (受入コマンドの再確認も tracked file や index を書き換えないものに限る)。
+一時ファイルは repo 外 (`mktemp`) のみに置く。検証開始時と終了時に `bash scripts/evidence-stamp.sh`
+を実行し、両値を判定 JSON の `self_stamp_before` / `self_stamp_after` に記録する
+(両者の不一致 = 自分が検証対象ツリーを汚した証跡)。
+
 ## round と tree_stamp (stale 判定)
 - 3 verifier artifact (`static-review.json` / `runtime-verify.json` / `spec-review.json`) は
   `.agent-evidence/round-<N>/` に保存される。あなたは **最新 round のみ**を読む
@@ -76,6 +84,8 @@ substitute_verification の証跡パス) を記録する。
   "escalate_to_human": false,
   "round_evaluated": "round-<N>",
   "tree_stamp": {"git_sha": "", "dirty_diff_hash": ""},
+  "self_stamp_before": {"git_sha": "", "dirty_diff_hash": ""},
+  "self_stamp_after": {"git_sha": "", "dirty_diff_hash": ""},
   "stale_evidence_detected": false,
   "must_results": [
     {"must": "Must-1", "satisfied": true, "evidence": "<artifact/command/observable>"}
