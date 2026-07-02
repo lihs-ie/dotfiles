@@ -1,0 +1,6 @@
+# quarantine.yml — gates: fixture (missing evidence_url and approved_by, expires_at valid)
+gates:
+  - gate: "full-e2e-gate"
+    substitute_verification: "manual Xcode 17 sim run + screenshot evidence"
+    owner: "@lihs-ie"
+    expires_at: "2027-12-31"

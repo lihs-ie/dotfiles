@@ -37,6 +37,21 @@ model: sonnet
 - 同じ未達理由が **2 周連続** で残る (collapsed loop) なら `escalate_to_human: true`。
 - `.agent-evidence/iterations.json` が存在する場合、**collapsed loop** (末尾 3 ラウンド同一 failure_class) を確認する。collapsed loop が検出されたら `escalate_to_human: true` + `collapse_detected: true` を output に含める。
 
+## Waiver 判定 (ゲート FAIL/未実行時)
+対象ゲートが FAIL または未実行でも、以下を **両方** 満たす場合に限り、そのゲートの FAIL を
+blocking にせず done 判定を継続できる (`docs/specs/gate-waiver.md`):
+- `ci/quarantine.yml` の `gates:` に、実行日時点で **期限内 (`expires_at` >= 実行日)** の該当
+  `gate` エントリがあり、`evidence_url` / `substitute_verification` / `owner` / `approved_by` /
+  `approved_at` が揃っている。
+- そのエントリの `substitute_verification` に記述された代替検証の **実行証跡** が evidence bundle
+  (`.agent-evidence/` 配下) に存在する。
+
+waiver 無し・`expires_at` 期限切れ・代替検証証跡無しのいずれか一つでも該当すれば、waiver 適用前と
+**同じ** FAIL/continue 判定にする (自己裁量で blocking から除外しない)。あなた自身が waiver
+エントリを生成・承認してはならない (`approved_by`/`approved_at` は常に人間の手入力)。適用した
+waiver は Output の `waiver_applied` に、対象 `gate` 名と根拠 (evidence_url /
+substitute_verification の証跡パス) を記録する。
+
 ## 判定軸
 
 | 軸 | done | continue |
@@ -69,7 +84,10 @@ model: sonnet
   ],
   "summary": "<merge 可否の一言>",
   "collapse_detected": false,
-  "failure_class_distribution": {}
+  "failure_class_distribution": {},
+  "waiver_applied": [
+    {"gate": "", "evidence_url": "", "substitute_verification_evidence_path": ""}
+  ]
 }
 ```
 

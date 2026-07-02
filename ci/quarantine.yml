@@ -8,3 +8,13 @@
 #     owner: "@username"
 #     expires_at: "YYYY-MM-DD"           # 必須・無期限禁止
 entries: []
+#
+# gates: — 環境起因で恒久的に通せないゲートの期限付き waiver (docs/specs/gate-waiver.md)。
+#   - gate: <対象ゲートのスクリプト/コマンド名>
+#     evidence_url: <環境起因の証拠 (issue URL / incident パス)>
+#     substitute_verification: <代替検証手段の具体記述>
+#     owner: <人名>
+#     expires_at: "YYYY-MM-DD"   # 無期限禁止
+#     approved_by: <承認者>
+#     approved_at: "YYYY-MM-DD"
+gates: []

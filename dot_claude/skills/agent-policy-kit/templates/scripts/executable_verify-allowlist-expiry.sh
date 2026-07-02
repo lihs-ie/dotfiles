@@ -22,9 +22,29 @@ check_expiry_file() {
   local expired
   expired="$(awk -v today="$today" '
     function val(s){ sub(/^[^:]*:[[:space:]]*/,"",s); gsub(/^["\x27]|["\x27]$/,"",s); return s }
-    /^[[:space:]]*-[[:space:]]*(rule|test):/ { entry=val($0); path=""; expiry="" }
-    /^[[:space:]]{2,}(path|test):/ { path=val($0) }
-    /^[[:space:]]*expires_at:/ { expiry=val($0); if (expiry=="" || expiry < today) print "  " entry " (" path ") expires_at=" (expiry==""?"<MISSING>":expiry) }
+    function flush_gate() {
+      if (gate_entry != "") {
+        missing = ""
+        if (gate_expiry == "" || gate_expiry < today) missing = missing " expires_at=" (gate_expiry==""?"<MISSING>":gate_expiry)
+        if (gate_evidence_url == "") missing = missing " evidence_url=<MISSING>"
+        if (gate_substitute_verification == "") missing = missing " substitute_verification=<MISSING>"
+        if (gate_approved_by == "") missing = missing " approved_by=<MISSING>"
+        if (missing != "") print "  gate:" gate_entry missing
+      }
+      gate_entry=""; gate_expiry=""; gate_evidence_url=""; gate_substitute_verification=""; gate_approved_by=""
+    }
+    /^[[:space:]]*-[[:space:]]*(rule|test):/ { flush_gate(); mode="legacy"; entry=val($0); path=""; expiry="" }
+    /^[[:space:]]*-[[:space:]]*gate:/ { flush_gate(); mode="gate"; gate_entry=val($0) }
+    /^[[:space:]]{2,}(path|test):/ { if (mode=="legacy") path=val($0) }
+    mode=="gate" && /^[[:space:]]{2,}evidence_url:/ { gate_evidence_url=val($0) }
+    mode=="gate" && /^[[:space:]]{2,}substitute_verification:/ { gate_substitute_verification=val($0) }
+    mode=="gate" && /^[[:space:]]{2,}approved_by:/ { gate_approved_by=val($0) }
+    /^[[:space:]]*expires_at:/ {
+      expiry=val($0)
+      if (mode=="gate") { gate_expiry=expiry }
+      else if (mode=="legacy") { if (expiry=="" || expiry < today) print "  " entry " (" path ") expires_at=" (expiry==""?"<MISSING>":expiry) }
+    }
+    END { flush_gate() }
   ' "$f")"
 
   if [ -n "$expired" ]; then

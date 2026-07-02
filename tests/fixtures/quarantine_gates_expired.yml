@@ -1,0 +1,9 @@
+# quarantine.yml — gates: fixture (expired expires_at, all other fields present)
+gates:
+  - gate: "full-e2e-gate"
+    evidence_url: "https://github.com/example/recall-paper/issues/17"
+    substitute_verification: "manual Xcode 17 sim run + screenshot evidence"
+    owner: "@lihs-ie"
+    expires_at: "2025-01-01"
+    approved_by: "@lihs-ie"
+    approved_at: "2024-12-01"

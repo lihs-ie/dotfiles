@@ -54,6 +54,18 @@ run_test "verify-allowlist-expiry quarantine expired" \
   "bash scripts/verify-allowlist-expiry.sh --quarantine tests/fixtures/quarantine_expired.yml" \
   1
 
+run_test "verify-allowlist-expiry quarantine gates valid" \
+  "bash scripts/verify-allowlist-expiry.sh --quarantine tests/fixtures/quarantine_gates_valid.yml" \
+  0
+
+run_test "verify-allowlist-expiry quarantine gates expired" \
+  "bash scripts/verify-allowlist-expiry.sh --quarantine tests/fixtures/quarantine_gates_expired.yml" \
+  1
+
+run_test "verify-allowlist-expiry quarantine gates missing fields" \
+  "bash scripts/verify-allowlist-expiry.sh --quarantine tests/fixtures/quarantine_gates_missing_fields.yml" \
+  1
+
 run_test "kit-sync-check --check ok (vendored matches manifest)" \
   "bash scripts/kit-sync-check.sh --check --manifest tests/fixtures/kit-sync/manifest.yml --target-dir tests/fixtures/kit-sync/target_ok" \
   0
