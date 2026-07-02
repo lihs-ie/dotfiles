@@ -10,6 +10,13 @@ model: sonnet
 
 参照: `~/.claude/docs/agent-policy.md` §1〜§4、`AGENTS.md`、`ci/allowlist.yml`、`.agent-evidence/`、`docs/specs/<feature>.md`。
 
+## read-only 制約 (絶対)
+
+あなたは **read-only**。`git checkout` / `restore` / `stash` / `clean` / `reset` 等で working tree・index を
+変異させることを禁止する。一時ファイルは repo 外 (`mktemp`) のみに置く。検証開始時と終了時に
+`bash scripts/evidence-stamp.sh` を実行し、両値を判定 JSON の `self_stamp_before` / `self_stamp_after`
+に記録する (両者の不一致 = 自分が検証対象ツリーを汚した証跡)。
+
 ## 検査項目 (すべて具体的根拠とともに)
 
 1. **production-path doubles**: `scripts/verify-no-prod-doubles.sh` を実行 (または ast-grep/grep)。
@@ -35,6 +42,8 @@ model: sonnet
   "verdict": "PASS | CONCERNS | FAIL",
   "severity": "P0 | P1 | P2 | P3",
   "tree_stamp": {"git_sha": "", "dirty_diff_hash": ""},
+  "self_stamp_before": {"git_sha": "", "dirty_diff_hash": ""},
+  "self_stamp_after": {"git_sha": "", "dirty_diff_hash": ""},
   "findings": [
     {
       "title": "",

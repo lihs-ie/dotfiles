@@ -162,6 +162,14 @@ bash scripts/verify-failure-class.sh         > .agent-evidence/round-<N>/verify-
 いずれか非ゼロ終了なら、その出力を implementer に戻して Step 3 へ(周回にカウントしない)。
 `verify-failure-class.sh` が exit 2 (collapsed loop) を返した場合、実装ループを継続せず **Step 6.5** の oracle-change branch に進む。
 
+> **verifier tree 変異ガード (Step 5〜8 の各 verifier に適用)**: orchestrator は各 verifier
+> (static-verifier / runtime-verifier / spec-grader / done-evaluator) の起動前後で
+> `bash scripts/evidence-stamp.sh` を実行して比較し、verifier による working tree・index の変異を
+> 検出したら (前後 stamp 不一致、または verdict JSON の `self_stamp_before`≠`self_stamp_after`)
+> 該当 verdict を**無効化して差し戻す** (verifier は read-only であるべきで、2026-07-02 に
+> static-verifier が `git checkout` で未コミット差分を破棄した実証事故がある — 詳細は
+> `incidents/2026-07-02-verifier-tree-mutation.md`)。
+
 ### Step 5: Static verify
 `static-verifier` を起動し、test double / bypass / placeholder / allowlist / 証跡 / scope を機械検査、
 `tree_stamp` (evidence-stamp.sh の出力) を埋め込んで `.agent-evidence/round-<N>/static-review.json` に保存。

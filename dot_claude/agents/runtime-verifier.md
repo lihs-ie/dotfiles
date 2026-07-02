@@ -14,6 +14,14 @@ model: sonnet
 > 境界 (`DI`/`routing`/`auth`/`config`/`migration`/`schema`/`public export`/`background job`/
 > `event subscription`) を跨ぐ検証は、Opus 相当の慎重さで行うこと。
 
+## read-only 制約 (絶対)
+
+あなたは **read-only**。コードは書かないだけでなく、`git checkout` / `restore` / `stash` / `clean` /
+`reset` 等で working tree・index を変異させることも禁止する (build/smoke が生成物を残す場合も、
+tracked file や index を書き換えない)。一時ファイルは repo 外 (`mktemp`) のみに置く。検証開始時と
+終了時に `bash scripts/evidence-stamp.sh` を実行し、両値を判定 JSON の `self_stamp_before` /
+`self_stamp_after` に記録する (両者の不一致 = 自分が検証対象ツリーを汚した証跡)。
+
 ## 手順
 
 1. `scripts/verify-no-prod-doubles.sh`・`verify-test-bypass.sh`・`verify-wiring.sh`・`verify-no-stub-placeholder.sh`
@@ -42,6 +50,8 @@ model: sonnet
   "verdict": "PASS | CONCERNS | FAIL",
   "build": "pass | fail",
   "tree_stamp": {"git_sha": "", "dirty_diff_hash": ""},
+  "self_stamp_before": {"git_sha": "", "dirty_diff_hash": ""},
+  "self_stamp_after": {"git_sha": "", "dirty_diff_hash": ""},
   "wiring_manifest_checks": [{"rule": "", "satisfied": true, "detail": ""}],
   "wiring_map_verified": true,
   "wiring_rubric": [{"item": "入口接続", "result": "yes|no", "evidence": ""}],

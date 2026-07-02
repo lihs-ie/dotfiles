@@ -40,4 +40,4 @@ files:
     sha256: "a6662bb87431625c0824c6d2493c2b6bfe73ae4de457eaf87f9fd8a4a6aa0fad"
   verify-wiring.sh:
     template: templates/scripts/executable_verify-wiring.sh
-    sha256: "608744734c34b7682c291607b5f6b425652ab89be7c42b226e00a56356cf7d3f"
+    sha256: "5cefa7b68c06683dcb96267828489b58dc00a1a3b6b52de95a2d4644a3015696"

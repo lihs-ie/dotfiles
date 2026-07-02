@@ -32,6 +32,8 @@ PostToolUse の policy hook が編集ごとにガードを回すので、違反�
 3. format / lint は **最後**。時間が尽きても **配線を優先** する。
 4. 新規 export シンボルは、別ファイルであっても **本番呼び出し箇所から実参照される** までが 1 セット。
    完了前に `grep -rn '<new_symbol>' <src>` で定義/宣言以外の参照が在ることを自己確認する。
+5. 成果物自体が entrypoint (単一 CLI/スクリプト) の場合、wire-first = **空スタブの entrypoint を
+   先に作りテストが実 path へ到達する状態を作る**こと。呼び出し側が test harness しかないのは正常。
 
 ## TDD で実装する (RED → GREEN → Refactor)
 
@@ -174,6 +176,7 @@ verify-failure-class.sh がこのファイルを読んで collapsed loop と未�
   red で不明なら `"product"` 仮置きで `note` に「要確認」 と書く)
 - `target_test` は red entry で必須 (collapsed loop 判定のキー)。
 - `first_red.reason` が `"assertion_failure"` 以外 (compile/import error / typo) は **偽 RED** で 3-strike カウントに含めない
+- `started_at` は `date -u +%Y-%m-%dT%H:%M:%SZ` の実時刻を使う (作業順の代替値で埋めない。監査で wall clock と突合するため)。
 
 完全な schema (例):
 ```json
