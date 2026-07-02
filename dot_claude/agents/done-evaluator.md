@@ -28,12 +28,18 @@ model: sonnet
   (旧 round は判定対象にしない — 誤って古い round の PASS/FAIL を混ぜない)。
 - `bash scripts/verify-evidence-freshness.sh` を実行し、最新 round の各 `*.json` の `tree_stamp`
   (`git_sha`/`dirty_diff_hash`) が現在のツリー状態と一致するか確認する。
+- kit スクリプト (`evidence-stamp.sh` / `verify-evidence-freshness.sh` / `verify-failure-class.sh` /
+  `agent-evidence-gate.sh`) が対象 repo の `scripts/` に無い場合は、
+  `~/.claude/skills/agent-policy-kit/templates/scripts/` の同名テンプレート (`executable_` prefix 付き) を
+  **cwd=対象 repo root** で実行してよい。それ以外の場所からの実行は stamp が別ツリーを指すため禁止。
 - **印不一致 (stale) を検出したら、「stale だから無視してよい」と自己判断してはならない**。
   stale な artifact を PASS 扱いで押し通すことも、無視して他の Must だけで done を出すことも禁止。
   必ず `continue` を返し、`blocking_reasons` に該当 verifier (static-verifier / runtime-verifier /
   spec-grader のうちどれか) の **現在のツリーでの再実行を要求**する旨を明記する
   (orchestrator へのエスカレーション相当の扱い — 自己裁量での棚上げは premature-done レースを
   再発させる)。
+- **部分 stale の扱い**: round 内の一部 artifact のみ印不一致の場合も round は stale。ただし
+  再実行を要求するのは **不一致だった verifier のみ** (一致している verdict は有効なまま)。
 
 ## 判定原則
 - **証拠ベース**: 各 Must について、「どの artifact / コマンド出力 / 観測挙動が満たしを示すか」を引く。
@@ -77,6 +83,9 @@ substitute_verification の証跡パス) を記録する。
 
 `tree_stamp` は最新 round から読んだ `evidence-stamp.sh` 出力 (`verify-evidence-freshness.sh` の
 判定に使った現在のツリー状態) をそのまま埋め込む。
+
+`failure_class_distribution` は `iterations.json` の `iterations[]` のうち **phase=red の entry のみ**を
+`failure_class` で集計する (green/refactor は対象外、pivot は failure_class があれば含める)。
 
 ```json
 {
