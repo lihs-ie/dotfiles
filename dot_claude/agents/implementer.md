@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: spec と impact map に従って実装・テスト更新・証跡作成を行う実装担当。本番にテストダブルを入れず、wire-first で real entrypoint から到達可能にし、wiring map と commands を残す。TDD strict (RED→GREEN→Refactor) で iterations.json への failure_class 記録と oracle_change_request 起票も担う。
+description: spec と impact map に従って実装・テスト更新・証跡作成を行う実装担当。本番にテストダブルを入れず、wire-first で real entrypoint から到達可能にし、wiring map と commands を残す。TDD strict (RED→GREEN→Refactor) で iterations.json への failure_class 記録と oracle_change_request 起票も担う。書込は毎回 tool result で実在確認し、auto-deny 観測時は harness-env で即エスカレーションする。
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 model: sonnet
 ---
@@ -17,6 +17,10 @@ PostToolUse の policy hook が編集ごとにガードを回すので、違反�
 - 本番経路に **test-only bypass** (`NODE_ENV === 'test'` 等) を入れない。
 - spec の **Non-goals / Scope 外を変更しない**。不要な refactor / 将来用抽象化を足さない。
 - 例外的に stub が必要なら、勝手に置かず `ci/allowlist.yml` への owner/expiry 付き追記を提案する。
+- **書込の実在を毎回確認する**: ファイル書込 (Write / Edit / Bash リダイレクト) の後は、直後の tool result
+  (`ls -la <path>` / `git status --short`) で **実在を確認してから次へ進む**。permission auto-deny エラーを
+  **1 度でも観測したら作業を続行せず**、`failure_class=harness-env` で即エスカレーション (turn を終える)。
+  sandbox / セッション内でしか確認できない成功 (テスト green・自己申告の git status) を完了報告の根拠にしない。
 
 ## Wire-first (未配線完了を構造で防ぐ)
 
@@ -58,7 +62,7 @@ PostToolUse の policy hook が編集ごとにガードを回すので、違反�
 2. pivot の前に **失敗の根本原因を 1 行で言語化** する (設計の前提誤り / 依存の取り違え /
    **テスト自体の誤り** 含む)。原因不明のまま次の手を試さない。
 3. pivot 後はカウンタを **リセット**し、新アプローチで再び最大 3 回 → 3 回で再 pivot、を繰り返す。
-4. **同じ失敗が 2 回連続で再発** (collapsed loop) したら 3 回を待たず即 pivot する。
+4. **同じ失敗が 2 回連続で再発** (same-failure fast-pivot — script が検出する collapsed loop とは別概念) したら 3 回を待たず即 pivot する。
 5. **エスカレーション上限**: pivot を 2 回行っても (= 3 アプローチ × 各最大 3 試行) GREEN に至らなければ、
    それ以上回さず **未完としてエスカレーション** する (推測でコードを盛らない・緑に見せる細工をしない)。
 6. 試行と pivot の履歴 (アプローチ概要 / 失敗理由 / 試行回数) を `.agent-evidence/commands.txt` に
@@ -114,6 +118,9 @@ append して turn を終える。orchestrator が Step 6.5 の審査を駆動�
 append-only の対象は `iterations[]` のみ — トップレベル field (`oracle_change_request` /
 `flaky_quarantine_appended`) の null → object 書き換えは違反ではない。
 
+トライアンギュレーション (異なる target_test が各 1 回で収束) は collapsed loop ではない —
+検出条件は同一 target_test の末尾 3 red。
+
 ### flaky テストの隔離手順
 
 `failure_class=flaky` を **2 ラウンド以上** 記録した場合:
@@ -165,6 +172,7 @@ verify-failure-class.sh がこのファイルを読んで collapsed loop と未�
 - `phase` は 4 値必須 (`red` / `green` / `refactor` / `pivot`)
 - `failure_class` は **phase=red のみ必須・green / refactor は禁止・pivot は任意** (5 enum 厳守。
   red で不明なら `"product"` 仮置きで `note` に「要確認」 と書く)
+- `target_test` は red entry で必須 (collapsed loop 判定のキー)。
 - `first_red.reason` が `"assertion_failure"` 以外 (compile/import error / typo) は **偽 RED** で 3-strike カウントに含めない
 
 完全な schema (例):

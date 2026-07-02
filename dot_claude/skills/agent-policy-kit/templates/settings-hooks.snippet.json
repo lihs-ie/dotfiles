@@ -1,0 +1,46 @@
+{
+  "_comment": "agent-policy-kit: 消費 repo の .claude/settings.json にマージする hook 登録ひな形。3 hook (PreToolUse/PostToolUse/Stop)。agent-time-budget.sh は PreToolUse と PostToolUse の両方に二重登録する (docs/specs/agent-time-budget-hook.md Amendments Q3: Pre=deny at >=100%、Post=75-100%の非ブロック警告)。既存 hooks.PostToolUse 配列がある場合は要素を追記 (置換しない) — 例: 既存に他ツールの PostToolUse エントリがあれば、下記の 2 要素をその配列に push する。",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-time-budget.sh\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-policy-hook.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-time-budget.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-evidence-gate.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

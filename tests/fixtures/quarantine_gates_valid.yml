@@ -1,0 +1,14 @@
+# quarantine.yml — gates: fixture (valid, co-exists with entries:)
+entries:
+  - test: "FlakySuite.testFoo"
+    reason: "intermittent timing issue"
+    owner: "@lihs-ie"
+    expires_at: "2027-12-31"
+gates:
+  - gate: "full-e2e-gate"
+    evidence_url: "https://github.com/example/recall-paper/issues/17"
+    substitute_verification: "manual Xcode 17 sim run + screenshot evidence"
+    owner: "@lihs-ie"
+    expires_at: "2027-12-31"
+    approved_by: "@lihs-ie"
+    approved_at: "2026-07-01"

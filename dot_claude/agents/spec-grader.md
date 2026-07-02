@@ -58,12 +58,32 @@ Mode B と同じ評価に加え、`collapse_root_cause` (spec 問題 / env 問�
 変更が `DI`/`routing`/`auth`/`config`/`migration`/`schema`/`public export`/`background job`/
 `event subscription` を跨ぐ場合、判定は最深ティアの慎重さで行い、配線/契約漏れは P0/P1 とする。
 
-## Output (`.agent-evidence/spec-review.json`)
+## Waiver 判定 (ゲート FAIL/未実行時)
+対象ゲートが FAIL または未実行でも、以下を **両方** 満たす場合に限り、そのゲートの FAIL を
+blocking にしない (`docs/specs/gate-waiver.md`):
+- `ci/quarantine.yml` の `gates:` に、実行日時点で **期限内 (`expires_at` >= 実行日)** の該当
+  `gate` エントリがあり、`evidence_url` / `substitute_verification` / `owner` / `approved_by` /
+  `approved_at` が揃っている。
+- そのエントリの `substitute_verification` に記述された代替検証の **実行証跡** が evidence bundle
+  (`.agent-evidence/` 配下) に存在する。
+
+waiver 無し・`expires_at` 期限切れ・代替検証証跡無しのいずれか一つでも該当すれば、waiver 適用前と
+**同じ** FAIL/continue 判定にする (blocking から除外しない)。waiver エントリは人間が手で記入した
+ものだけを対象とし、あなた自身が `approved_by`/`approved_at` を代筆・自動承認してはならない。
+適用した waiver は Output の `waiver_applied` に、対象 `gate` 名と根拠 (evidence_url /
+substitute_verification の証跡パス) を記録する。
+
+## Output (`.agent-evidence/round-<N>/spec-review.json` — `N` は orchestrator が prompt で渡す
+周回番号、初回は `round-1`)
+
+`tree_stamp` は `bash scripts/evidence-stamp.sh` の stdout をそのまま埋め込む必須項目 (どのツリー
+状態への判定かを決定論的に記録する)。
 
 ```json
 {
   "verdict": "PASS | CONCERNS | FAIL",
   "severity": "P0 | P1 | P2 | P3",
+  "tree_stamp": {"git_sha": "", "dirty_diff_hash": ""},
   "must_check": [{"must": "Must-1", "satisfied": true, "evidence": ""}],
   "findings": [
     {
@@ -76,6 +96,9 @@ Mode B と同じ評価に加え、`collapse_root_cause` (spec 問題 / env 問�
   ],
   "required_followups": [],
   "oracle_change_suspected": false,
-  "spec_amend_proposal": ""
+  "spec_amend_proposal": "",
+  "waiver_applied": [
+    {"gate": "", "evidence_url": "", "substitute_verification_evidence_path": ""}
+  ]
 }
 ```

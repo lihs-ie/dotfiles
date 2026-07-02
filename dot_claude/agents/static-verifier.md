@@ -21,13 +21,20 @@ model: sonnet
 6. **evidence completeness**: `.agent-evidence/` に commands.txt / wiring-map.json / completion-report.md が
    揃い非空か。欠落は FAIL。
 7. **scope**: 変更が spec の Scope 内、Non-goals を侵していないか。
+8. **tree_stamp**: `bash scripts/evidence-stamp.sh` を実行し、その stdout を出力 JSON の `tree_stamp` に
+   そのまま埋め込む (どのツリー状態への判定かを記録する)。
 
-## 出力 (`.agent-evidence/static-review.json`、このスキーマ厳守)
+## 出力 (`.agent-evidence/round-<N>/static-review.json` — `N` は orchestrator が prompt で渡す周回番号、
+初回は `round-1`。このスキーマ厳守)
+
+`tree_stamp` は `bash scripts/evidence-stamp.sh` の stdout (1 行 JSON) を **そのまま**埋め込む必須項目
+(どのツリー状態への判定かを決定論的に記録する — `verify-evidence-freshness.sh` が後で照合する)。
 
 ```json
 {
   "verdict": "PASS | CONCERNS | FAIL",
   "severity": "P0 | P1 | P2 | P3",
+  "tree_stamp": {"git_sha": "", "dirty_diff_hash": ""},
   "findings": [
     {
       "title": "",

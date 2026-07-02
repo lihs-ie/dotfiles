@@ -41,6 +41,8 @@ jobs:
         run: bash scripts/verify-no-stub-placeholder.sh
       - name: Allowlist not expired
         run: bash scripts/verify-allowlist-expiry.sh
+      - name: Quarantine not expired
+        run: bash scripts/verify-allowlist-expiry.sh --quarantine ci/quarantine.yml
       - name: Upload policy evidence
         if: ${{ success() || failure() }}
         uses: actions/upload-artifact@v4

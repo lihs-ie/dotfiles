@@ -26,8 +26,16 @@ description: モック濫用と未配線完了報告を防ぐ三層ループの�
    その旨を警告する。
 4. **spec 前提**: `docs/specs/<feature>.md` が在るか確認する。**無ければ** Step 1 で先に仕様化する
    (`/grill-me` で人間と認識合わせ → spec-curator で正規化)。
-5. `.agent-evidence/` を作り、**実行中マーカー** を立てる:
-   `.agent-evidence/.active` に `task=<task>` と開始時刻を書く
+5. `.agent-evidence/` を作り、**実行中マーカー** を立てる。`.agent-evidence/.active` の正規スキーマは
+   次の 3 行 (`scripts/agent-time-budget.sh` PreToolUse/PostToolUse hook がこれを parse する前提):
+   ```
+   task=<task>
+   started_at=<ISO8601 UTC、例: 2026-07-02T03:48:11Z>
+   lane=<light|heavy>
+   ```
+   Step 0 の時点ではレーン (light/heavy) が未確定 (Step 1 の spec 出力に依存) のため、ここでは
+   `task=<task>` と `started_at=<ISO8601 UTC>` の **2 行のみ** を書く (`lane=` はまだ書かない)。
+   `lane=` は Step 1.5 (Two-lane router) でレーン確定後に追記する
    (これがある間だけ Stop hook の証跡ゲートが発火する)。
 6. TaskCreate で進捗 TODO (Spec/Topology/Implement/Gate/Static/Runtime/SpecGrade/Done) を作る。
 
@@ -44,12 +52,18 @@ runtime-verifier / spec-grader / done-evaluator を **Opus** に昇格する。
 |---|---|---|---|---|
 | 1 Spec | spec-curator | sonnet | opus | `docs/specs/<feature>.md` |
 | 2 Topology | topology-mapper | sonnet | sonnet | `.agent-evidence/impact-map.md` |
-| 3 Implement | implementer | sonnet | sonnet | code + `wiring-map.json`/`commands.txt`/`completion-report.md` |
-| 4 Gate | (skill が直接 Bash 実行) | — | — | `verify-*.log` |
-| 5 Static | static-verifier | sonnet | sonnet | `static-review.json` |
-| 6 Runtime | runtime-verifier | sonnet | opus | `runtime-verify.json` |
-| 7 SpecGrade | spec-grader | sonnet | opus | `spec-review.json` |
-| 8 Done | done-evaluator | sonnet | opus | `done-eval.json` |
+| 3 Implement | implementer | sonnet | sonnet | code + `wiring-map.json`/`commands.txt`/`completion-report.md` (root) |
+| 4 Gate | (skill が直接 Bash 実行) | — | — | `.agent-evidence/round-<N>/verify-*.log` |
+| 5 Static | static-verifier | sonnet | sonnet | `.agent-evidence/round-<N>/static-review.json` |
+| 6 Runtime | runtime-verifier | sonnet | opus | `.agent-evidence/round-<N>/runtime-verify.json` |
+| 7 SpecGrade | spec-grader | sonnet | opus | `.agent-evidence/round-<N>/spec-review.json` |
+| 8 Done | done-evaluator | sonnet | opus | `.agent-evidence/round-<N>/done-eval.json` |
+
+`round-<N>` の `N` は Step 9 の周回カウントと一致し、初回は `round-1`。implementer 成果物
+(`completion-report.md`/`commands.txt`/`wiring-map.json`/`iterations.json`/`impact-map.md`/`.active`)
+は **`.agent-evidence/` root のまま**変更しない (`scripts/agent-evidence-gate.sh` の参照パスは無変更)。
+Step 4 のログは `.agent-evidence/round-<N>/` に同居させるが、ツリー状態スタンプを持たないため
+freshness 検査 (`verify-evidence-freshness.sh`) の対象外 (整理上の同居に留まる)。
 
 ### iterations.json スキーマ (Step 3 が書き、Step 4/10 が読む)
 
@@ -68,7 +82,7 @@ green / refactor は禁止・pivot は任意**。ここに複製は置かない 
 
 `scripts/verify-failure-class.sh` の exit code:
 - exit 1 — スキーマ違反 (phase 欠落 / 未知 enum / green・refactor への failure_class 混入)
-- exit 2 — collapsed loop (**末尾 3 red** が同一 failure_class)。エラーではなく Step 6.5 への routing シグナル
+- exit 2 — collapsed loop (**末尾 3 red** が同一 failure_class **かつ同一 target_test**)。エラーではなく Step 6.5 への routing シグナル
 
 ### Step 1: Spec curation
 `docs/specs/<feature>.md` が無ければ、まず **`/grill-me`** で人間と決定木を解消し、
@@ -89,10 +103,27 @@ spec 受け取り後、以下の判定式でレーンを決める (agent-policy.
 - **block レーン**: blocking_reasons を列挙し `.agent-evidence/.active` を削除して停止する。implementer は起動しない。topology-mapper と spec-grader DEEPEST を順に起動して spec 分割推奨を出し、`AskUserQuestion(...)` でユーザーにキックオフを委ねる。
 - **light レーン**: topology-mapper / static-verifier / spec-grader を skip する。runtime-verifier は entrypoint に touch した場合のみ起動する。
 - light/heavy の区別は Time budget 閾値に影響する (light=30min / heavy=90min)。
+- レーン確定直後、`.agent-evidence/.active` に `lane=<light|heavy>` を追記する (Step 0 で書いた
+  `task=`/`started_at=` の 2 行に 1 行足すのみで上書きしない。以後 `agent-time-budget.sh` hook が
+  正しい budget で経過率を計算できるようになる)。
 
 ### Step 2: Topology
 `topology-mapper` を起動し Impact Map (入口→中継→出口の wire-map + 必須配線点) を生成、
 `.agent-evidence/impact-map.md` に保存。orphan(到達不能になりうる)経路の警告があれば spec に反映。
+
+### Step 2.7: 書込プローブ (implementer 起動前の harness-env 検出 — 実測で必要と判明)
+background subagent は permission prompt を出せず、Write/Edit が **auto-deny で無音消失**しうる。
+この状態で implementer を起動すると「テスト green・git status 出力付き」の完了報告が返るのに
+**実ディスクへの書込はゼロ**という最悪形態の未配線報告が量産される (2026-07-02 に implementer 2 周分・
+計 ~25 分 + 255k tokens が書込消失で空回りした実証事故)。これを implementer 起動前に 1 tool call で検出する:
+
+1. orchestrator が **使い捨て subagent (最小 tools = Write のみ)** を起動し、
+   `.agent-evidence/.write-probe` に 1 行 (probe token + タイムスタンプ) を書かせて即終了させる。
+2. orchestrator 自身が `ls -la .agent-evidence/.write-probe` を実行し、tool result で **実在を確認**する
+   (subagent の自己申告を根拠にしない — 消失を自覚できないのが本事故の核心)。
+3. **不在なら harness-env** (permission auto-deny / 書込消失) と判定し、**implementer を起動しない**。
+   `AskUserQuestion(...)` で permission 設定 (acceptEdits / settings allow) の修正をユーザーに求めて停止する。
+4. **実在確認できたら** probe ファイル (`.agent-evidence/.write-probe`) を削除してから Step 3 へ進む。
 
 ### Step 3: Implement
 `implementer` に **Goal / Context / Constraints / Done When / Evidence Required** の 5 スロットを
@@ -110,21 +141,31 @@ pivot を 2 回 (= 3 アプローチ) 試しても未達なら未完としてエ
 2. `bash scripts/verify-no-stub-placeholder.sh` で placeholder stub (`err501`/`notImplemented`/`todo!()` 等) の
    残置を検出 → 差し戻す。
 3. 各 `wired_at` が **実在の本番呼び出し**か grep で抜き取り確認する (定義/ export 宣言行ではない)。
+4. **差し戻しは排他選択**: 「`SendMessage` による既存 implementer の再開」か「新規 implementer 起動」の
+   **どちらか一方のみ**を選ぶ。新規起動の前に **旧 agent の継続作業有無 (生死) を必ず確認**する。
+   並行 implementer は 2026-07-02 に premature-done レース (証跡が配線に先行) を起こした実証済み事故原因 —
+   implementer 2 体 + orchestrator 代筆の三者並行編集は禁止する。
+5. **報告と実ディスクが矛盾したら、捏造と断定する前に harness-env (書込消失) を先に切り分ける**。
+   Step 2.7 の書込プローブを再実行して判定し、probe が失敗するなら harness-env (permission auto-deny) 確定。
+   差し戻し文言も **harness-env 可能性を前提に**書く (モデル非難に向かわない — 実際は環境事故のことがある)。
 
 ### Step 4: Deterministic gates (skill が直接実行)
+`round-<N>` は今周回の番号 (初回は `round-1`)。ログ出力先ディレクトリを先に作る:
 ```
-bash scripts/verify-no-prod-doubles.sh    > .agent-evidence/verify-no-prod-doubles.log 2>&1
-bash scripts/verify-test-bypass.sh        > .agent-evidence/verify-test-bypass.log 2>&1
-bash scripts/verify-wiring.sh             > .agent-evidence/verify-wiring.log 2>&1
-bash scripts/verify-no-stub-placeholder.sh > .agent-evidence/verify-no-stub-placeholder.log 2>&1
-bash scripts/verify-failure-class.sh         > .agent-evidence/verify-failure-class.log 2>&1
+mkdir -p .agent-evidence/round-<N>
+bash scripts/verify-no-prod-doubles.sh    > .agent-evidence/round-<N>/verify-no-prod-doubles.log 2>&1
+bash scripts/verify-test-bypass.sh        > .agent-evidence/round-<N>/verify-test-bypass.log 2>&1
+bash scripts/verify-wiring.sh             > .agent-evidence/round-<N>/verify-wiring.log 2>&1
+bash scripts/verify-no-stub-placeholder.sh > .agent-evidence/round-<N>/verify-no-stub-placeholder.log 2>&1
+bash scripts/verify-failure-class.sh         > .agent-evidence/round-<N>/verify-failure-class.log 2>&1
 ```
 いずれか非ゼロ終了なら、その出力を implementer に戻して Step 3 へ(周回にカウントしない)。
 `verify-failure-class.sh` が exit 2 (collapsed loop) を返した場合、実装ループを継続せず **Step 6.5** の oracle-change branch に進む。
 
 ### Step 5: Static verify
 `static-verifier` を起動し、test double / bypass / placeholder / allowlist / 証跡 / scope を機械検査、
-`static-review.json` に保存。FAIL なら Step 3 へ。
+`tree_stamp` (evidence-stamp.sh の出力) を埋め込んで `.agent-evidence/round-<N>/static-review.json` に保存。
+FAIL なら Step 3 へ。
 
 ### Step 6: Runtime verify (**観測可能挙動の実行 assert は必須・省略不可**)
 `runtime-verifier` を起動。build/wiring/entrypoint 到達を実行で確認し、配線 rubric (`rubric/core/wiring.md`
@@ -135,7 +176,8 @@ orchestrator が手動代替で**省略してはならない**。FAIL なら Ste
 
 ### Step 6.5: Oracle-change branch
 
-runtime-verifier が FAIL を返し、かつ `spec-review.json` に `oracle_change_suspected: true` が含まれる場合:
+runtime-verifier が FAIL を返し、かつ `.agent-evidence/round-<N>/spec-review.json` に
+`oracle_change_suspected: true` が含まれる場合:
 
 1. **spec-grader を DEEPEST_MODEL で再起動**し、(a) test pyramid 層違反、(b) 環境非決定性、(c) spec 自体の inconsistency を一次評価させ **spec amend 提案** を出させる。
 2. spec amend 提案がある場合は **`AskUserQuestion(...)` を用いてユーザーに提示して承認を得る** (implementer の try-and-error を続けない)。
@@ -143,14 +185,20 @@ runtime-verifier が FAIL を返し、かつ `spec-review.json` に `oracle_chan
 4. 3 周連続で oracle_change_suspected が出る場合は **collapsed oracle loop** として人間エスカレーション。
 
 ### Step 7: Spec grade
-`spec-grader` を起動し、spec の Must/Non-goal/契約を `rubric/core/spec.md` (+pack) で照合、`spec-review.json` に保存。
+`spec-grader` を起動し、spec の Must/Non-goal/契約を `rubric/core/spec.md` (+pack) で照合、
+`tree_stamp` を埋め込んで `.agent-evidence/round-<N>/spec-review.json` に保存。
 Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
 
 ### Step 8: Done — 二段門
-- **① 構造ゲート**: `.agent-evidence/` に completion-report.md / commands.txt / wiring-map.json が
-  非空で揃うか (Stop hook `agent-evidence-gate.sh` が強制。skill 側でも確認)。
-- **② 意味ゲート**: `done-evaluator` を **fresh context** で起動し、spec の Must × evidence bundle を
-  照合させ `done-eval.json` を得る。`continue` なら blocking_reasons を implementer に戻して Step 3 へ。
+- **① 構造ゲート**: `.agent-evidence/` root に completion-report.md / commands.txt / wiring-map.json が
+  非空で揃うか (Stop hook `agent-evidence-gate.sh` が強制。skill 側でも確認)。加えて
+  `bash scripts/verify-evidence-freshness.sh` を実行し **exit 0 必須**とする。非ゼロ (印不一致・stale)
+  の場合は done-evaluator を起動せず、該当 verifier (static-verifier/runtime-verifier/spec-grader の
+  うち `.agent-evidence/round-<N>/` の該当 `*.json` を現在のツリーで再実行する (done-evaluator に
+  stale 裁量での棚上げを許さない)。
+- **② 意味ゲート**: `done-evaluator` を **fresh context** で起動し、`.agent-evidence/round-<N>/` の
+  最新 round のみを対象に spec の Must × evidence bundle を照合させ `done-eval.json` を得る。
+  `continue` なら blocking_reasons を implementer に戻して Step 3 へ。
 
 ### Step 9: 収束 (最大 2 周) + Time budget 強制
 
@@ -187,6 +235,6 @@ context 20% 閾値を下回る前に警告を出し、ユーザーに続行 or �
 - reviewer の指摘は必ずコードパス/artifact/Must 番号に紐付ける。抽象的懸念だけで pass/fail しない。
 - 本番パスの test double / test-bypass は allowlist 以外は無条件で差し戻す。
 - `iterations.json` の `failure_class` は 5 値 enum のみ。未知 class は verify-failure-class.sh が exit 1 で検出する。
-- collapsed loop (末尾 3 **red** ラウンド同一 failure_class — green/refactor/pivot は窓に数えない) は Step 6.5 oracle-change branch に自動誘導する。verify-failure-class.sh が exit 2 で検出する。
+- collapsed loop (末尾 3 **red** ラウンド同一 failure_class **かつ同一 target_test** — green/refactor/pivot は窓に数えない) は Step 6.5 oracle-change branch に自動誘導する。verify-failure-class.sh が exit 2 で検出する。
 - context 窓 20% 以下で Step 10 に強制ジャンプし `time-budget-exceeded.md` を残す。翌セッションで再開可能にする。
 - フレーキーテスト (`failure_class=flaky`) を 2 回以上検出したら `ci/quarantine.yml` への隔離エントリ追加を implementer に義務付ける。

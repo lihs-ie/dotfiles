@@ -30,9 +30,17 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
 - **hlint** (Haskell): backend の既存 `.hlint.yaml` に `templates/hlint/no-prod-doubles.yaml` を MERGE。
 - **scripts/**: `verify-no-prod-doubles.sh` `verify-test-bypass.sh` `verify-wiring.sh`
   `verify-no-stub-placeholder.sh` `verify-allowlist-expiry.sh` `verify-failure-class.sh`
-  `kit-sync-check.sh` `agent-policy-hook.sh` `agent-evidence-gate.sh` を `scripts/` にコピー
-  (chmod +x)。各ファイルは `templates/scripts/executable_*.sh` の `# KIT_VERSION: <semver>` 行を
-  そのまま引き継ぐ (kit 側 `kit-manifest.yml` の該当 sha256 と紐付く — 版管理・sync は下記 §Sync)。
+  `evidence-stamp.sh` `verify-evidence-freshness.sh` `kit-sync-check.sh` `agent-policy-hook.sh`
+  `agent-evidence-gate.sh` `agent-time-budget.sh` を `scripts/` にコピー (chmod +x)。
+  `evidence-stamp.sh` は現在の git
+  ツリー状態を JSON で出力し、`verify-evidence-freshness.sh` はそれを呼び出して
+  `.agent-evidence/round-<N>/` の verifier artifact が stale でないかを検査する (4 verifier agent +
+  proven-done Step 8 が消費、詳細は `docs/specs/verifier-tree-stamp.md`)。`agent-time-budget.sh` は
+  proven-done の Time budget (light=30min/heavy=90min) を PreToolUse/PostToolUse hook で決定論的に
+  執行する (`.agent-evidence/.active` の `started_at`/`lane` を parse、詳細は
+  `docs/specs/agent-time-budget-hook.md`)。各ファイルは
+  `templates/scripts/executable_*.sh` の `# KIT_VERSION: <semver>` 行をそのまま引き継ぐ (kit 側
+  `kit-manifest.yml` の該当 sha256 と紐付く — 版管理・sync は下記 §Sync)。
 - **rubric/**: `rubric/core/wiring.md` `rubric/core/spec.md` (必須) と、**検出言語に対応する**
   `rubric/packs/<lang>.md` (nextjs/laravel/go/haskell/python/oidc/ddd のうち該当のみ) をコピー。
 - **wiring_manifest.yml**: `templates/wiring_manifest.yml.tmpl` の `{{WIRING_RULES}}` を、
@@ -45,8 +53,13 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
 - **ci/allowlist.yml**: 空テンプレートを配置 (既存があればスキップ)。
 - **ci/quarantine.yml**: `templates/quarantine.yml` を配置 (既存があればスキップ)。フレーキーテスト隔離レジストリ。
 - **scripts/verify-failure-class.sh**: `templates/scripts/executable_verify-failure-class.sh` からコピー。iterations.json の failure_class 検証。
-- **.claude/settings.json**: PostToolUse(Write|Edit) に `agent-policy-hook.sh` を **追加**、
-  Stop に `agent-evidence-gate.sh` を **追加** (既存配列にマージ・消さない)。
+- **.claude/settings.json**: `templates/settings-hooks.snippet.json` を参照ひな形として、
+  PreToolUse(Write|Edit|Bash) に `agent-time-budget.sh` を **追加**、
+  PostToolUse(Write|Edit) に `agent-policy-hook.sh` を **追加**、
+  PostToolUse(Write|Edit|Bash) に `agent-time-budget.sh` を (別配列要素として) **追加**、
+  Stop に `agent-evidence-gate.sh` を **追加** (既存配列にマージ・消さない)。`agent-time-budget.sh`
+  は PreToolUse/PostToolUse の **両方** に二重登録する (Pre は `ratio>=100%` で deny、Post は
+  `75%〜100%` で非ブロック警告 — 詳細は `docs/specs/agent-time-budget-hook.md` Amendments Q3)。
 - **.github/workflows/pr-gate.yml**: `templates/pr-gate.yml.tmpl` を配置。決定論ゲート
   (no-prod-doubles/test-bypass/wiring/no-stub-placeholder/allowlist-expiry) を required にし、
   AI review (codex/claude) は repo variable `ENABLE_CODEX_REVIEW`/`ENABLE_CLAUDE_REVIEW` + secret で
