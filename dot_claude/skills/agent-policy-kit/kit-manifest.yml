@@ -8,6 +8,9 @@ files:
   agent-policy-hook.sh:
     template: templates/scripts/executable_agent-policy-hook.sh
     sha256: "ada315d0d10671505928d744181cef75ec605c00bf90c1716800689a6bcfce2d"
+  agent-time-budget.sh:
+    template: templates/scripts/executable_agent-time-budget.sh
+    sha256: "dab3d7fafcfcdc4625f8bab7e3a81e0950195db85e53d30db46d1c15b8012b9b"
   evidence-stamp.sh:
     template: templates/scripts/executable_evidence-stamp.sh
     sha256: "4b3586bed4cd8ac7435f4df4d69a39e9e9db90ed7cdfd77968574c8cd9ddb5dd"

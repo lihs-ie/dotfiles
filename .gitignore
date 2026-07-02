@@ -1,2 +1,6 @@
 # agent-dev / agent-policy 証跡はローカル生成 (CI で再生成)。コミットしない。
 .agent-evidence/
+
+# agent-time-budget.sh のテストが動的生成する started_at fixture (時刻依存のためコミット不可)。
+# ディレクトリ骨格 (.gitkeep) のみ追跡する。
+tests/fixtures/time-budget/*/.active
