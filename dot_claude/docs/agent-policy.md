@@ -94,6 +94,7 @@ spec 受け取り後、以下の判定式でレーンを決める (proven-done S
 - **観測可能挙動を real entrypoint で実行して assert** した (build 成功・unit 緑は弱い近似に過ぎない)。
 - テスト成功は exit code / "SUCCEEDED" 表示だけで判断せず、**実行件数 N>0 かつ failure 0** を確認する (0 件実行 = 成功ではない)。テストランナーは失敗ありでも exit 0 を返しうる (例: Xcode の xcodebuild は failedTests>0 でも exit 0)。**構造化結果 (xcresult / JUnit XML 等) の `failedTests>0` / `result≠passed` を一次判定**にし、gate は xcresulttool 等で parse して fail closed にする。
 - working-tree 状態で回す決定論ゲートは未コミット変更も検査対象に含める (committed diff が空 = OK と即断しない)。
+- implementer の `completion-report.md` の `Done When` には **runtime-final gate** (例: full E2E gate / integration test) の `rc=0` 確認を含める。SPM/unit + fast-gate (lint) のみで done と主張してはならない (app 起動 crash / 配線漏れ / build 連鎖エラーは unit/lint 経路では検出不能)。Orchestrator は Step 3.5 完了ガードで最終 gate の rc を確認するか、その省略を明示する責任を持つ。harness-env (Xcode 26 clone-parallel 不安定等) で full E2E gate が不安定な場合は直列 fallback / 単独 sim 実行で代替確認し、その経緯を `.agent-evidence/<task>/ESCALATION-*.md` に残す。
 - build / lint / typecheck / unit / contract / integration・smoke が通る。
 - 必要な **配線更新** が存在する:
   - **構造配線**: `route` / `export` / `container` / `provider` / `main` / `module` / `migration` /
