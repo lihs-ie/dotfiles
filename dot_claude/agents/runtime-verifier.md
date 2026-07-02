@@ -26,16 +26,22 @@ model: sonnet
 5. **配線 rubric (`rubric/core/wiring.md` + 検出言語の pack) を上から判定** する。
 6. **real public entrypoint から changed symbol へ到達できることを、可能なら最短経路で 1 本実行し、
    spec の受入条件にある観測可能挙動を assert する** (例: `POST /x` を叩き body.id が非空)。
+7. `bash scripts/evidence-stamp.sh` を実行し、その stdout を出力 JSON の `tree_stamp` にそのまま埋め込む。
 
 > **この実行 assert は省略不可。** build 成功・unit 緑だけでは「実装したが未配線」を捕捉できない。
 > これがデータフロー未配線を WHY によらず捕まえる唯一の確実なネット。
 
-## 出力 (`.agent-evidence/runtime-verify.json`)
+## 出力 (`.agent-evidence/round-<N>/runtime-verify.json` — `N` は orchestrator が prompt で渡す
+周回番号、初回は `round-1`)
+
+`tree_stamp` は `evidence-stamp.sh` の出力をそのまま埋め込む必須項目 (どのツリー状態への判定かを
+決定論的に記録する)。
 
 ```json
 {
   "verdict": "PASS | CONCERNS | FAIL",
   "build": "pass | fail",
+  "tree_stamp": {"git_sha": "", "dirty_diff_hash": ""},
   "wiring_manifest_checks": [{"rule": "", "satisfied": true, "detail": ""}],
   "wiring_map_verified": true,
   "wiring_rubric": [{"item": "入口接続", "result": "yes|no", "evidence": ""}],

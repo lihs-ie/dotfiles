@@ -70,6 +70,46 @@ run_test "kit-sync-check --self (real templates vs real kit-manifest.yml)" \
   "bash scripts/kit-sync-check.sh --self --manifest dot_claude/skills/agent-policy-kit/kit-manifest.yml" \
   0
 
+# evidence-stamp.sh: output schema (git_sha / dirty_diff_hash keys, string types)
+stamp_output="$(bash scripts/evidence-stamp.sh 2>/dev/null || true)"
+if printf '%s' "$stamp_output" | jq -e --arg sha "$(git rev-parse HEAD)" '.git_sha == $sha' >/dev/null 2>&1 \
+  && printf '%s' "$stamp_output" | jq -e '.dirty_diff_hash | test("^[0-9a-f]{64}$")' >/dev/null 2>&1; then
+  echo "PASSED: evidence-stamp schema (git_sha matches HEAD, dirty_diff_hash is sha256 hex)"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: evidence-stamp schema (git_sha matches HEAD, dirty_diff_hash is sha256 hex)"
+  fail_count=$((fail_count + 1))
+fi
+
+run_test "verify-evidence-freshness no-round-dir (first run)" \
+  "bash scripts/verify-evidence-freshness.sh --evidence-dir tests/fixtures/evidence-freshness/no-round-dir" \
+  0
+
+run_test "verify-evidence-freshness mismatch (stale tree_stamp fixture)" \
+  "bash scripts/verify-evidence-freshness.sh --evidence-dir tests/fixtures/evidence-freshness/mismatch" \
+  1
+
+# verify-evidence-freshness mismatch output: offending file path must be listed
+mismatch_output="$(bash scripts/verify-evidence-freshness.sh --evidence-dir tests/fixtures/evidence-freshness/mismatch 2>&1 || true)"
+if printf '%s' "$mismatch_output" | grep -q "round-1/static-review.json"; then
+  echo "PASSED: verify-evidence-freshness mismatch output lists offending file"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: verify-evidence-freshness mismatch output lists offending file"
+  fail_count=$((fail_count + 1))
+fi
+
+# verify-evidence-freshness match: git_sha/dirty_diff_hash depend on the live tree state at test
+# time, so build the round dir dynamically from evidence-stamp.sh's own output rather than a
+# static fixture.
+match_evidence_dir="$(mktemp -d)"
+mkdir -p "$match_evidence_dir/round-1"
+printf '{"tree_stamp": %s}' "$(bash scripts/evidence-stamp.sh)" > "$match_evidence_dir/round-1/static-review.json"
+run_test "verify-evidence-freshness match (live tree stamp)" \
+  "bash scripts/verify-evidence-freshness.sh --evidence-dir '$match_evidence_dir'" \
+  0
+rm -rf "$match_evidence_dir"
+
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"
 exit $fail_count

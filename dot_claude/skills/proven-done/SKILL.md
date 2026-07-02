@@ -44,12 +44,18 @@ runtime-verifier / spec-grader / done-evaluator を **Opus** に昇格する。
 |---|---|---|---|---|
 | 1 Spec | spec-curator | sonnet | opus | `docs/specs/<feature>.md` |
 | 2 Topology | topology-mapper | sonnet | sonnet | `.agent-evidence/impact-map.md` |
-| 3 Implement | implementer | sonnet | sonnet | code + `wiring-map.json`/`commands.txt`/`completion-report.md` |
-| 4 Gate | (skill が直接 Bash 実行) | — | — | `verify-*.log` |
-| 5 Static | static-verifier | sonnet | sonnet | `static-review.json` |
-| 6 Runtime | runtime-verifier | sonnet | opus | `runtime-verify.json` |
-| 7 SpecGrade | spec-grader | sonnet | opus | `spec-review.json` |
-| 8 Done | done-evaluator | sonnet | opus | `done-eval.json` |
+| 3 Implement | implementer | sonnet | sonnet | code + `wiring-map.json`/`commands.txt`/`completion-report.md` (root) |
+| 4 Gate | (skill が直接 Bash 実行) | — | — | `.agent-evidence/round-<N>/verify-*.log` |
+| 5 Static | static-verifier | sonnet | sonnet | `.agent-evidence/round-<N>/static-review.json` |
+| 6 Runtime | runtime-verifier | sonnet | opus | `.agent-evidence/round-<N>/runtime-verify.json` |
+| 7 SpecGrade | spec-grader | sonnet | opus | `.agent-evidence/round-<N>/spec-review.json` |
+| 8 Done | done-evaluator | sonnet | opus | `.agent-evidence/round-<N>/done-eval.json` |
+
+`round-<N>` の `N` は Step 9 の周回カウントと一致し、初回は `round-1`。implementer 成果物
+(`completion-report.md`/`commands.txt`/`wiring-map.json`/`iterations.json`/`impact-map.md`/`.active`)
+は **`.agent-evidence/` root のまま**変更しない (`scripts/agent-evidence-gate.sh` の参照パスは無変更)。
+Step 4 のログは `.agent-evidence/round-<N>/` に同居させるが、ツリー状態スタンプを持たないため
+freshness 検査 (`verify-evidence-freshness.sh`) の対象外 (整理上の同居に留まる)。
 
 ### iterations.json スキーマ (Step 3 が書き、Step 4/10 が読む)
 
@@ -133,19 +139,22 @@ pivot を 2 回 (= 3 アプローチ) 試しても未達なら未完としてエ
    差し戻し文言も **harness-env 可能性を前提に**書く (モデル非難に向かわない — 実際は環境事故のことがある)。
 
 ### Step 4: Deterministic gates (skill が直接実行)
+`round-<N>` は今周回の番号 (初回は `round-1`)。ログ出力先ディレクトリを先に作る:
 ```
-bash scripts/verify-no-prod-doubles.sh    > .agent-evidence/verify-no-prod-doubles.log 2>&1
-bash scripts/verify-test-bypass.sh        > .agent-evidence/verify-test-bypass.log 2>&1
-bash scripts/verify-wiring.sh             > .agent-evidence/verify-wiring.log 2>&1
-bash scripts/verify-no-stub-placeholder.sh > .agent-evidence/verify-no-stub-placeholder.log 2>&1
-bash scripts/verify-failure-class.sh         > .agent-evidence/verify-failure-class.log 2>&1
+mkdir -p .agent-evidence/round-<N>
+bash scripts/verify-no-prod-doubles.sh    > .agent-evidence/round-<N>/verify-no-prod-doubles.log 2>&1
+bash scripts/verify-test-bypass.sh        > .agent-evidence/round-<N>/verify-test-bypass.log 2>&1
+bash scripts/verify-wiring.sh             > .agent-evidence/round-<N>/verify-wiring.log 2>&1
+bash scripts/verify-no-stub-placeholder.sh > .agent-evidence/round-<N>/verify-no-stub-placeholder.log 2>&1
+bash scripts/verify-failure-class.sh         > .agent-evidence/round-<N>/verify-failure-class.log 2>&1
 ```
 いずれか非ゼロ終了なら、その出力を implementer に戻して Step 3 へ(周回にカウントしない)。
 `verify-failure-class.sh` が exit 2 (collapsed loop) を返した場合、実装ループを継続せず **Step 6.5** の oracle-change branch に進む。
 
 ### Step 5: Static verify
 `static-verifier` を起動し、test double / bypass / placeholder / allowlist / 証跡 / scope を機械検査、
-`static-review.json` に保存。FAIL なら Step 3 へ。
+`tree_stamp` (evidence-stamp.sh の出力) を埋め込んで `.agent-evidence/round-<N>/static-review.json` に保存。
+FAIL なら Step 3 へ。
 
 ### Step 6: Runtime verify (**観測可能挙動の実行 assert は必須・省略不可**)
 `runtime-verifier` を起動。build/wiring/entrypoint 到達を実行で確認し、配線 rubric (`rubric/core/wiring.md`
@@ -156,7 +165,8 @@ orchestrator が手動代替で**省略してはならない**。FAIL なら Ste
 
 ### Step 6.5: Oracle-change branch
 
-runtime-verifier が FAIL を返し、かつ `spec-review.json` に `oracle_change_suspected: true` が含まれる場合:
+runtime-verifier が FAIL を返し、かつ `.agent-evidence/round-<N>/spec-review.json` に
+`oracle_change_suspected: true` が含まれる場合:
 
 1. **spec-grader を DEEPEST_MODEL で再起動**し、(a) test pyramid 層違反、(b) 環境非決定性、(c) spec 自体の inconsistency を一次評価させ **spec amend 提案** を出させる。
 2. spec amend 提案がある場合は **`AskUserQuestion(...)` を用いてユーザーに提示して承認を得る** (implementer の try-and-error を続けない)。
@@ -164,14 +174,20 @@ runtime-verifier が FAIL を返し、かつ `spec-review.json` に `oracle_chan
 4. 3 周連続で oracle_change_suspected が出る場合は **collapsed oracle loop** として人間エスカレーション。
 
 ### Step 7: Spec grade
-`spec-grader` を起動し、spec の Must/Non-goal/契約を `rubric/core/spec.md` (+pack) で照合、`spec-review.json` に保存。
+`spec-grader` を起動し、spec の Must/Non-goal/契約を `rubric/core/spec.md` (+pack) で照合、
+`tree_stamp` を埋め込んで `.agent-evidence/round-<N>/spec-review.json` に保存。
 Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
 
 ### Step 8: Done — 二段門
-- **① 構造ゲート**: `.agent-evidence/` に completion-report.md / commands.txt / wiring-map.json が
-  非空で揃うか (Stop hook `agent-evidence-gate.sh` が強制。skill 側でも確認)。
-- **② 意味ゲート**: `done-evaluator` を **fresh context** で起動し、spec の Must × evidence bundle を
-  照合させ `done-eval.json` を得る。`continue` なら blocking_reasons を implementer に戻して Step 3 へ。
+- **① 構造ゲート**: `.agent-evidence/` root に completion-report.md / commands.txt / wiring-map.json が
+  非空で揃うか (Stop hook `agent-evidence-gate.sh` が強制。skill 側でも確認)。加えて
+  `bash scripts/verify-evidence-freshness.sh` を実行し **exit 0 必須**とする。非ゼロ (印不一致・stale)
+  の場合は done-evaluator を起動せず、該当 verifier (static-verifier/runtime-verifier/spec-grader の
+  うち `.agent-evidence/round-<N>/` の該当 `*.json` を現在のツリーで再実行する (done-evaluator に
+  stale 裁量での棚上げを許さない)。
+- **② 意味ゲート**: `done-evaluator` を **fresh context** で起動し、`.agent-evidence/round-<N>/` の
+  最新 round のみを対象に spec の Must × evidence bundle を照合させ `done-eval.json` を得る。
+  `continue` なら blocking_reasons を implementer に戻して Step 3 へ。
 
 ### Step 9: 収束 (最大 2 周) + Time budget 強制
 

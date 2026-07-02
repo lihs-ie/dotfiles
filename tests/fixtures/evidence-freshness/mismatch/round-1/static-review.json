@@ -1,0 +1,10 @@
+{
+  "verdict": "PASS",
+  "severity": "P3",
+  "findings": [],
+  "required_followups": [],
+  "tree_stamp": {
+    "git_sha": "0000000000000000000000000000000000dead",
+    "dirty_diff_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

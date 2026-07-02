@@ -58,12 +58,17 @@ Mode B と同じ評価に加え、`collapse_root_cause` (spec 問題 / env 問�
 変更が `DI`/`routing`/`auth`/`config`/`migration`/`schema`/`public export`/`background job`/
 `event subscription` を跨ぐ場合、判定は最深ティアの慎重さで行い、配線/契約漏れは P0/P1 とする。
 
-## Output (`.agent-evidence/spec-review.json`)
+## Output (`.agent-evidence/round-<N>/spec-review.json` — `N` は orchestrator が prompt で渡す
+周回番号、初回は `round-1`)
+
+`tree_stamp` は `bash scripts/evidence-stamp.sh` の stdout をそのまま埋め込む必須項目 (どのツリー
+状態への判定かを決定論的に記録する)。
 
 ```json
 {
   "verdict": "PASS | CONCERNS | FAIL",
   "severity": "P0 | P1 | P2 | P3",
+  "tree_stamp": {"git_sha": "", "dirty_diff_hash": ""},
   "must_check": [{"must": "Must-1", "satisfied": true, "evidence": ""}],
   "findings": [
     {
