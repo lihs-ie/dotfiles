@@ -51,10 +51,10 @@ for adr_file in "$ADR_DIRECTORY"/*.md; do
   adr_date=$(date -r "$adr_timestamp" '+%Y-%m-%d')
   adr_iso=$(date -r "$adr_timestamp" '+%Y-%m-%dT%H:%M:%S')
 
-  # Status と改訂履歴の有無 (3 形式対応: "Status: x" 行 / テーブル行 "| status | x |" /
-  # "# ステータス" 見出しの次の非空行)
-  adr_status=$(grep -m1 -iE '^[*-]* *\**status\**[:*]' "$adr_file" 2>/dev/null \
-    | sed -E 's/^[*-]* *\**[Ss]tatus\**[: ]*//; s/\*//g' | tr -d ' ' || true)
+  # Status と改訂履歴の有無 (4 形式対応: "Status: x" / "- ステータス: x" 箇条書き行 /
+  # テーブル行 "| status | x |" / "# ステータス" 見出しの次の非空行)
+  adr_status=$(grep -m1 -iE '^[*-]* *\**(status|ステータス)\**[:：*]' "$adr_file" 2>/dev/null \
+    | sed -E 's/^[*-]* *\**([Ss]tatus|ステータス)\**[:： ]*//; s/\*//g' | tr -d ' ' || true)
   if [ -z "$adr_status" ]; then
     adr_status=$(grep -m1 -iE '^\| *(status|ステータス) *\|' "$adr_file" 2>/dev/null \
       | awk -F'|' '{gsub(/^ +| +$/, "", $3); print $3}' || true)
