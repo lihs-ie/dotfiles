@@ -82,7 +82,7 @@ green / refactor は禁止・pivot は任意**。ここに複製は置かない 
 
 `scripts/verify-failure-class.sh` の exit code:
 - exit 1 — スキーマ違反 (phase 欠落 / 未知 enum / green・refactor への failure_class 混入)
-- exit 2 — collapsed loop (**末尾 3 red** が同一 failure_class)。エラーではなく Step 6.5 への routing シグナル
+- exit 2 — collapsed loop (**末尾 3 red** が同一 failure_class **かつ同一 target_test**)。エラーではなく Step 6.5 への routing シグナル
 
 ### Step 1: Spec curation
 `docs/specs/<feature>.md` が無ければ、まず **`/grill-me`** で人間と決定木を解消し、
@@ -235,6 +235,6 @@ context 20% 閾値を下回る前に警告を出し、ユーザーに続行 or �
 - reviewer の指摘は必ずコードパス/artifact/Must 番号に紐付ける。抽象的懸念だけで pass/fail しない。
 - 本番パスの test double / test-bypass は allowlist 以外は無条件で差し戻す。
 - `iterations.json` の `failure_class` は 5 値 enum のみ。未知 class は verify-failure-class.sh が exit 1 で検出する。
-- collapsed loop (末尾 3 **red** ラウンド同一 failure_class — green/refactor/pivot は窓に数えない) は Step 6.5 oracle-change branch に自動誘導する。verify-failure-class.sh が exit 2 で検出する。
+- collapsed loop (末尾 3 **red** ラウンド同一 failure_class **かつ同一 target_test** — green/refactor/pivot は窓に数えない) は Step 6.5 oracle-change branch に自動誘導する。verify-failure-class.sh が exit 2 で検出する。
 - context 窓 20% 以下で Step 10 に強制ジャンプし `time-budget-exceeded.md` を残す。翌セッションで再開可能にする。
 - フレーキーテスト (`failure_class=flaky`) を 2 回以上検出したら `ci/quarantine.yml` への隔離エントリ追加を implementer に義務付ける。

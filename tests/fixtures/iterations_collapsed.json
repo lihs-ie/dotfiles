@@ -2,9 +2,9 @@
   "iterations": [
     {"n": 1, "phase": "red", "approach_id": "A1", "failure_class": "product", "rca_one_line": "first"},
     {"n": 2, "phase": "green", "approach_id": "A1", "note": "partial green"},
-    {"n": 3, "phase": "red", "approach_id": "A2", "failure_class": "flaky", "rca_one_line": "second"},
-    {"n": 4, "phase": "red", "approach_id": "A2", "failure_class": "flaky", "rca_one_line": "third"},
+    {"n": 3, "phase": "red", "approach_id": "A2", "failure_class": "flaky", "target_test": "tests/x::same", "rca_one_line": "second"},
+    {"n": 4, "phase": "red", "approach_id": "A2", "failure_class": "flaky", "target_test": "tests/x::same", "rca_one_line": "third"},
     {"n": 5, "phase": "green", "approach_id": "A2", "note": "interleaved green must not reset the red window"},
-    {"n": 6, "phase": "red", "approach_id": "A3", "failure_class": "flaky", "rca_one_line": "fourth"}
+    {"n": 6, "phase": "red", "approach_id": "A3", "failure_class": "flaky", "target_test": "tests/x::same", "rca_one_line": "fourth"}
   ]
 }

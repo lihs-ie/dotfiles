@@ -34,6 +34,10 @@ run_test "verify-failure-class collapsed" \
   "bash scripts/verify-failure-class.sh tests/fixtures/iterations_collapsed.json" \
   2
 
+run_test "verify-failure-class triangulation (same failure_class, distinct target_test — not collapsed)" \
+  "bash scripts/verify-failure-class.sh tests/fixtures/iterations_triangulation.json" \
+  0
+
 run_test "verify-failure-class unknown class" \
   "bash scripts/verify-failure-class.sh tests/fixtures/iterations_unknown_class.json" \
   1

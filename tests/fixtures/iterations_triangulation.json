@@ -1,0 +1,10 @@
+{
+  "iterations": [
+    {"n": 1, "phase": "red", "approach_id": "A1", "target_test": "tests/x.test.ts::t1", "failure_class": "product", "rca_one_line": "t1 guard missing"},
+    {"n": 2, "phase": "green", "approach_id": "A1", "target_test": "tests/x.test.ts::t1", "note": "t1 passes"},
+    {"n": 3, "phase": "red", "approach_id": "A2", "target_test": "tests/x.test.ts::t2", "failure_class": "product", "rca_one_line": "t2 guard missing"},
+    {"n": 4, "phase": "green", "approach_id": "A2", "target_test": "tests/x.test.ts::t2", "note": "t2 passes"},
+    {"n": 5, "phase": "red", "approach_id": "A3", "target_test": "tests/x.test.ts::t3", "failure_class": "product", "rca_one_line": "t3 guard missing"},
+    {"n": 6, "phase": "green", "approach_id": "A3", "target_test": "tests/x.test.ts::t3", "note": "t3 passes"}
+  ]
+}
