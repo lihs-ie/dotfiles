@@ -58,3 +58,9 @@
 - wire-first の「単一 CLI タスク」への写像パターン (HTTP route 以外のエントリポイント例) を
   implementer.md に追加する。
 - `iterations.json` の `started_at` 粒度 (秒 vs 分) の許容誤差を明文化する。
+
+## Blind 確認 (一括適用後・回帰検証 — 2026-07-02 後半)
+- S1 (implementer, kebab greenfield): critical 5/5。**target_test 修正後の verify-failure-class が健全トライアンギュレーションで exit 0 を実測** (前周の誤 exit 2 が解消)。genuine RED 3 回、fake-it→triangulation の教科書進行
+- S2 (done-eval, 部分 stale): critical 4/4。新設「部分 stale = 不一致 verifier のみ再実行」を規定引用で正確適用
+- S3 (done-eval, clean): critical 3/3。前周に裁量補完だった 3 点 (パス fallback / red-only 集計 / stamp 記録) を全て明文規定の引用として実行
+- **収束判定: 一括適用は回帰なしで成功**。新規曖昧点 (全て軽微・次周候補): self_stamp_after の「終了時」定義 / must_results.satisfied の意味論分離 (内容充足 vs round freshness) / stale 規則と再確認原則の優先順位明記 / scaffold 不在 repo での前提節の適用範囲 / spec_revision の git 履歴なしケース

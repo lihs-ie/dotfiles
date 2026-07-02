@@ -216,6 +216,79 @@ else
   fail_count=$((fail_count + 1))
 fi
 
+# --- verify-wiring.sh: long-lived branch blind-spot (BASE_REF 未設定は committed ∪ working-tree
+# を常に union する。BASE_REF 明示時は committed のみの現行意味論を完全維持) ---
+setup_verify_wiring_long_lived_branch_fixture() {
+  # 一時 git repo を組み立てる: base commit (wiring_manifest.yml 最小構成) -> feature commit
+  # (committed diff base...HEAD を非空にする、wiring rule の when にはマッチしない無関係な変更)。
+  # working-tree-only の変更 (when にマッチする untracked file) は呼び出し側で追加する。
+  # 出力: "<repo_dir><TAB><base_commit_sha>"
+  local repo_dir
+  repo_dir="$(mktemp -d)"
+  (
+    cd "$repo_dir"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test"
+    # verify-wiring.sh の base 解決 (`git symbolic-ref refs/remotes/origin/HEAD`) が
+    # 「origin remote 未設定」で fatal (非0) にならないよう、symbolic ref のみ用意する
+    # (実 ref を指す必要はない — verify-wiring.sh 側は `git rev-parse --verify` で
+    # 存在しなければ HEAD~1 フォールバックに落ちる想定の経路を使う)。
+    git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+    mkdir -p src docs
+    cat > wiring_manifest.yml <<'YAML'
+rules:
+  - id: test-rule
+    when: "src/**"
+    require_one_of:
+      - "docs/**"
+    reason: "test fixture: src changes require docs wiring"
+YAML
+    echo "base" > README.md
+    git add wiring_manifest.yml README.md
+    git commit -q -m "base commit"
+    echo "feature change (unrelated to wiring rule)" >> README.md
+    git add README.md
+    git commit -q -m "feature commit"
+  ) >/dev/null
+  printf '%s\t%s' "$repo_dir" "$(git -C "$repo_dir" rev-parse HEAD~1)"
+}
+
+verify_wiring_script="$REPO_ROOT/scripts/verify-wiring.sh"
+wiring_fixture="$(setup_verify_wiring_long_lived_branch_fixture)"
+wiring_fixture_dir="${wiring_fixture%%$'\t'*}"
+wiring_fixture_base_sha="${wiring_fixture##*$'\t'}"
+
+# working-tree-only 変更: when ("src/**") にマッチする untracked file。require_one_of
+# ("docs/**") は満たさない。
+echo "untracked working-tree change" > "$wiring_fixture_dir/src/new.txt"
+
+wiring_unset_exit=0
+wiring_unset_output="$(cd "$wiring_fixture_dir" && unset BASE_REF CLAUDE_PROJECT_DIR && bash "$verify_wiring_script" 2>&1)" || wiring_unset_exit=$?
+if [ "$wiring_unset_exit" -eq 1 ] \
+  && printf '%s' "$wiring_unset_output" | grep -q "POLICY VIOLATION" \
+  && printf '%s' "$wiring_unset_output" | grep -q "test-rule"; then
+  echo "PASSED: verify-wiring BASE_REF unset + committed diff 非空でも working-tree-only 変更を検査する (長寿命ブランチ盲点修正, exit 1)"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: verify-wiring BASE_REF unset + committed diff 非空でも working-tree-only 変更を検査する (長寿命ブランチ盲点修正, exit 1) (exit=$wiring_unset_exit, out=$wiring_unset_output)"
+  fail_count=$((fail_count + 1))
+fi
+
+wiring_explicit_exit=0
+wiring_explicit_output="$(cd "$wiring_fixture_dir" && BASE_REF="$wiring_fixture_base_sha" bash "$verify_wiring_script" 2>&1)" || wiring_explicit_exit=$?
+if [ "$wiring_explicit_exit" -eq 0 ] \
+  && printf '%s' "$wiring_explicit_output" | grep -q "verify-wiring: OK" \
+  && ! printf '%s' "$wiring_explicit_output" | grep -q "POLICY VIOLATION"; then
+  echo "PASSED: verify-wiring BASE_REF 明示時は working-tree-only 変更を検査しない (committed のみの現行意味論維持, exit 0)"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: verify-wiring BASE_REF 明示時は working-tree-only 変更を検査しない (committed のみの現行意味論維持, exit 0) (exit=$wiring_explicit_exit, out=$wiring_explicit_output)"
+  fail_count=$((fail_count + 1))
+fi
+
+rm -rf "$wiring_fixture_dir"
+
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"
 exit $fail_count
