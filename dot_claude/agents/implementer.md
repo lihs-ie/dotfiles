@@ -17,6 +17,10 @@ PostToolUse の policy hook が編集ごとにガードを回すので、違反�
 - 本番経路に **test-only bypass** (`NODE_ENV === 'test'` 等) を入れない。
 - spec の **Non-goals / Scope 外を変更しない**。不要な refactor / 将来用抽象化を足さない。
 - 例外的に stub が必要なら、勝手に置かず `ci/allowlist.yml` への owner/expiry 付き追記を提案する。
+- **書込の実在を毎回確認する**: ファイル書込 (Write / Edit / Bash リダイレクト) の後は、直後の tool result
+  (`ls -la <path>` / `git status --short`) で **実在を確認してから次へ進む**。permission auto-deny エラーを
+  **1 度でも観測したら作業を続行せず**、`failure_class=harness-env` で即エスカレーション (turn を終える)。
+  sandbox / セッション内でしか確認できない成功 (テスト green・自己申告の git status) を完了報告の根拠にしない。
 
 ## Wire-first (未配線完了を構造で防ぐ)
 

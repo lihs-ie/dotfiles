@@ -94,6 +94,20 @@ spec 受け取り後、以下の判定式でレーンを決める (agent-policy.
 `topology-mapper` を起動し Impact Map (入口→中継→出口の wire-map + 必須配線点) を生成、
 `.agent-evidence/impact-map.md` に保存。orphan(到達不能になりうる)経路の警告があれば spec に反映。
 
+### Step 2.7: 書込プローブ (implementer 起動前の harness-env 検出 — 実測で必要と判明)
+background subagent は permission prompt を出せず、Write/Edit が **auto-deny で無音消失**しうる。
+この状態で implementer を起動すると「テスト green・git status 出力付き」の完了報告が返るのに
+**実ディスクへの書込はゼロ**という最悪形態の未配線報告が量産される (2026-07-02 に implementer 2 周分・
+計 ~25 分 + 255k tokens が書込消失で空回りした実証事故)。これを implementer 起動前に 1 tool call で検出する:
+
+1. orchestrator が **使い捨て subagent (最小 tools = Write のみ)** を起動し、
+   `.agent-evidence/.write-probe` に 1 行 (probe token + タイムスタンプ) を書かせて即終了させる。
+2. orchestrator 自身が `ls -la .agent-evidence/.write-probe` を実行し、tool result で **実在を確認**する
+   (subagent の自己申告を根拠にしない — 消失を自覚できないのが本事故の核心)。
+3. **不在なら harness-env** (permission auto-deny / 書込消失) と判定し、**implementer を起動しない**。
+   `AskUserQuestion(...)` で permission 設定 (acceptEdits / settings allow) の修正をユーザーに求めて停止する。
+4. **実在確認できたら** probe ファイル (`.agent-evidence/.write-probe`) を削除してから Step 3 へ進む。
+
 ### Step 3: Implement
 `implementer` に **Goal / Context / Constraints / Done When / Evidence Required** の 5 スロットを
 spec + Impact Map から埋めて渡す。**wire-first** (呼び出し側 placeholder を先に結線) を徹底させる。
@@ -110,6 +124,13 @@ pivot を 2 回 (= 3 アプローチ) 試しても未達なら未完としてエ
 2. `bash scripts/verify-no-stub-placeholder.sh` で placeholder stub (`err501`/`notImplemented`/`todo!()` 等) の
    残置を検出 → 差し戻す。
 3. 各 `wired_at` が **実在の本番呼び出し**か grep で抜き取り確認する (定義/ export 宣言行ではない)。
+4. **差し戻しは排他選択**: 「`SendMessage` による既存 implementer の再開」か「新規 implementer 起動」の
+   **どちらか一方のみ**を選ぶ。新規起動の前に **旧 agent の継続作業有無 (生死) を必ず確認**する。
+   並行 implementer は 2026-07-02 に premature-done レース (証跡が配線に先行) を起こした実証済み事故原因 —
+   implementer 2 体 + orchestrator 代筆の三者並行編集は禁止する。
+5. **報告と実ディスクが矛盾したら、捏造と断定する前に harness-env (書込消失) を先に切り分ける**。
+   Step 2.7 の書込プローブを再実行して判定し、probe が失敗するなら harness-env (permission auto-deny) 確定。
+   差し戻し文言も **harness-env 可能性を前提に**書く (モデル非難に向かわない — 実際は環境事故のことがある)。
 
 ### Step 4: Deterministic gates (skill が直接実行)
 ```

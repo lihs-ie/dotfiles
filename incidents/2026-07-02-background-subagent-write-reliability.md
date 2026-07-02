@@ -13,3 +13,10 @@
 - 書込消失の実態は「permission auto-deny 期の完全消失」+「修正後の遅延着地」の複合。差し戻し済み implementer #1 は SendMessage 後も作業を継続し完走していた。
 - orchestrator (自分) が差し戻しと同時に implementer #2 を新規起動したため、**implementer 2 体 + orchestrator 代筆の三者並行編集**が発生。runtime-verifier の premature-done 指摘 (証跡が配線に先行) はこのレースの観測。
 - 昇格候補 4 (追加): **差し戻しは「既存 agent の再開」か「新規起動」の排他選択とし、並行 implementer を禁止**する規定を proven-done SKILL.md Step 3.5 に明文化。差し戻し前に旧 agent の生死・作業継続有無を確認する。
+
+## 昇格済み (2026-07-02, feat/harness-p0-p4)
+正本のみ編集 (deployed ~/.claude は merge で反映):
+1. 昇格候補 1 → `dot_claude/skills/proven-done/SKILL.md` **Step 2.7: 書込プローブ** (Step 3 直前に新設)。
+2. 昇格候補 2 → `dot_claude/agents/implementer.md` **絶対制約** に「書込の実在を毎回確認する」を追加。
+3. 昇格候補 4 (排他選択 / 並行 implementer 禁止) → `SKILL.md` **Step 3.5** item 4。
+4. 昇格候補 3 (harness-env 先行切り分け) → `SKILL.md` **Step 3.5** item 5。
