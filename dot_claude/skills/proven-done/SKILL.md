@@ -132,6 +132,35 @@ spec 受け取り後、以下の判定式でレーンを決める (agent-policy.
 で orchestrator が行い**、採用時は `.agent-evidence/work-packets.json` として永続化し
 `decomposition_adopted` を確定する (topology-mapper 自身は提案のみ)。
 
+### Step 2.5: 実測 file 数での再 triage + packet 分解の採否確認
+
+**heavy レーンでのみ実行する** (Step 2 の「heavy レーンでは (light/block では評価しない)」と同じ区分)。
+light レーンは Step 1.5 で topology-mapper 自体を skip するため `.agent-evidence/impact-map.md` が
+存在せず、本 Step も skip する (light の定義上 `estimated_files ≤ 5` で block/packet 分解いずれの
+発火閾値にも届かないため、skip しても機能的損失はない)。
+
+topology-mapper が Step 2 で生成した `.agent-evidence/impact-map.md` の **Public entrypoints /
+Wiring points that MUST follow the change / Blast radius** 各節に列挙された変更対象・結線先ファイルを
+数え上げ、重複を除いた総数を **実測 `estimated_files`** として算出する (spec-curator が Step 1 で
+Risk 節に書いた `estimated_files: <N> (basis: ...)` は Step 2 実行前の当て推量であり、ここでの実測値に
+置き換える)。
+
+1. **block 閾値の再判定**: 実測 `estimated_files` が Step 1.5 の block レーンと同一の閾値
+   (`estimated_files > 30`) を超えたら、Step 1.5 の block レーンと**同じ手順**を取る:
+   `blocking_reasons` を列挙し `.agent-evidence/.active` を削除して停止する (implementer は起動しない)。
+   分割提案は Step 1.5 block レーン同様、topology-mapper と spec-grader DEEPEST を順に起動して
+   `AskUserQuestion(...)` でユーザーにキックオフを委ねる。
+2. **packet 分解採否の確定 (Must-1 の解決)**: Must-1 の発火条件式
+   `must_count >= 4 OR estimated_files >= 10 OR layers_touched >= 3` を、この実測 `estimated_files`
+   (と spec-curator の `must_count`、`impact-map.md` の `layers_touched`) で**再判定**する
+   (spec-curator の初期見積りではなく、この Step 2.5 の実測値を採用する)。
+   - 成立する場合、Step 2 で topology-mapper が最終応答テキストとして返した `packets[]` 分解案を
+     `.agent-evidence/work-packets.json` として永続化し、`decomposition_adopted: true` を書き込む
+     (Step 2 の「採否確定は Step 2.5 (後述) で orchestrator が行い」を解決)。
+   - 成立しない場合は `decomposition_adopted: false` を記録する (`work-packets.json` は作らなくてよい)。
+     Step 3 は通常の単発フローで進める。
+3. block にも該当せず packet 分解も不採用の場合は、そのまま Step 2.7 (書込プローブ) へ進む。
+
 ### Step 2.7: 書込プローブ (implementer 起動前の harness-env 検出 — 実測で必要と判明)
 background subagent は permission prompt を出せず、Write/Edit が **auto-deny で無音消失**しうる。
 この状態で implementer を起動すると「テスト green・git status 出力付き」の完了報告が返るのに

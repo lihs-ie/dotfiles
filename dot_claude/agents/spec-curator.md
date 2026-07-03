@@ -47,6 +47,7 @@ model: sonnet
 ## Risk
 - level: low | high-risk
 - escalate_to_opus: true | false
+- estimated_files: <N> (basis: <変更が波及しそうなファイルを Glob/Grep で列挙したコマンドまたは参照>)
 - 理由: <触れる境界領域>
 
 ## Open questions (あれば)
@@ -55,3 +56,6 @@ model: sonnet
 
 `Detail` / `Info` のような曖昧語を仕様名に使わない。識別子型は `XXXIdentifier`。
 受入条件が「人が読めば分かる」止まりにならないよう、必ず yes/no で機械判定できる形にすること。
+`estimated_files` は裸の当て推量を禁止する — `basis` に実際に実行した Glob/Grep コマンド
+(または既存の類似実装ファイル一覧への参照) を書き、根拠のある見積りにすること
+(proven-done Step 2.5 が topology-mapper の impact-map.md 実測値でこの見積りを再判定する)。
