@@ -26,7 +26,15 @@ description: モック濫用と未配線完了報告を防ぐ三層ループの�
    その旨を警告する。
 4. **spec 前提**: `docs/specs/<feature>.md` が在るか確認する。**無ければ** Step 1 で先に仕様化する
    (`/grill-me` で人間と認識合わせ → spec-curator で正規化)。
-5. `.agent-evidence/` を作り、**実行中マーカー** を立てる。`.agent-evidence/.active` の正規スキーマは
+5. **既存成果物の退避 (Amendment A4)**: `.active` を書く前に、`.agent-evidence/` 直下に前タスクの
+   implementer 成果物 (`iterations.json` / `commands.txt` / `wiring-map.json` / `completion-report.md` /
+   `round-N/` / `wiring-waivers.txt`) が残っていれば、`.agent-evidence/_archive/<旧 task_id>/` へ
+   退避する (旧 task_id は残置 `.active` の `task=` 行、または `completion-report.md` の spec 参照から
+   判定する)。退避しないと次タスクが旧 task_id の `iterations.json` を引き継ぎ、
+   `verify-failure-class.sh`・failure_class 分布・freshness 検査が前タスクのデータを誤読する
+   (dogfood 走行で topology-mapper が前タスク `verify-wiring-long-lived-branch-blindspot` の残骸と
+   期限なし wiring-waiver の残置を実検出した事故に基づく)。
+6. `.agent-evidence/` を作り、**実行中マーカー** を立てる。`.agent-evidence/.active` の正規スキーマは
    次の 3 行 (`scripts/agent-time-budget.sh` PreToolUse/PostToolUse hook がこれを parse する前提):
    ```
    task=<task>
@@ -37,7 +45,7 @@ description: モック濫用と未配線完了報告を防ぐ三層ループの�
    `task=<task>` と `started_at=<ISO8601 UTC>` の **2 行のみ** を書く (`lane=` はまだ書かない)。
    `lane=` は Step 1.5 (Two-lane router) でレーン確定後に追記する
    (これがある間だけ Stop hook の証跡ゲートが発火する)。
-6. TaskCreate で進捗 TODO (Spec/Topology/Implement/Gate/Static/Runtime/SpecGrade/Done) を作る。
+7. TaskCreate で進捗 TODO (Spec/Topology/Implement/Gate/Static/Runtime/SpecGrade/Done) を作る。
 
 > マーカーは**必ず最後に消す** (done でも人間エスカレーションでも)。途中で異常終了して
 > `.active` が残った場合に備え、Stop hook のメッセージは解除方法を案内する。
@@ -103,13 +111,55 @@ spec 受け取り後、以下の判定式でレーンを決める (agent-policy.
 - **block レーン**: blocking_reasons を列挙し `.agent-evidence/.active` を削除して停止する。implementer は起動しない。topology-mapper と spec-grader DEEPEST を順に起動して spec 分割推奨を出し、`AskUserQuestion(...)` でユーザーにキックオフを委ねる。
 - **light レーン**: topology-mapper / static-verifier / spec-grader を skip する。runtime-verifier は entrypoint に touch した場合のみ起動する。
 - light/heavy の区別は Time budget 閾値に影響する (light=30min / heavy=90min)。
-- レーン確定直後、`.agent-evidence/.active` に `lane=<light|heavy>` を追記する (Step 0 で書いた
-  `task=`/`started_at=` の 2 行に 1 行足すのみで上書きしない。以後 `agent-time-budget.sh` hook が
-  正しい budget で経過率を計算できるようになる)。
+- レーン確定直後、`.agent-evidence/.active` に `lane=<light|heavy>` を追記すると**同時に**、
+  `started_at` を **現在 UTC で再スタンプ**する (Amendment A3。`date -u +%Y-%m-%dT%H:%M:%SZ` を
+  再実行し、Step 0 で書いた値を置き換える — grill-me / spec 化に要した人間対話時間を implementer の
+  実装 budget から除外するための修正。2026-06-29 事故 (`agent-time-budget-hook` の動機) の対象は
+  autonomous 実装ループの暴走であり、人間対話の待ち時間ではないため)。以後 `.active` は
+  `task=`/`started_at=`/`lane=` の 3 行になり、`agent-time-budget.sh` hook はこの再スタンプ後の
+  時刻を起点に budget 経過率を計算する。
 
 ### Step 2: Topology
 `topology-mapper` を起動し Impact Map (入口→中継→出口の wire-map + 必須配線点) を生成、
 `.agent-evidence/impact-map.md` に保存。orphan(到達不能になりうる)経路の警告があれば spec に反映。
+
+**heavy レーンでは** (light/block では評価しない)、topology-mapper が Impact Map 生成と
+**同一呼び出し内**で (追加の Agent 呼び出しを発生させずに) 発火条件式
+`must_count >= 4 OR estimated_files >= 10 OR layers_touched >= 3` を評価し、成立すれば
+`packet_id`/`musts`/`target_files`/`done_when`/`depends_on` の 5 フィールドを持つ `packets[]` 分解案
+(producer-before-consumer 順序) を最終応答テキストとして返す (Must-1)。`.agent-evidence/impact-map.md`
+には新設フィールド `layers_touched` (変更が跨ぐ層数) を含める。分解案の**採否確定は Step 2.5 (後述)
+で orchestrator が行い**、採用時は `.agent-evidence/work-packets.json` として永続化し
+`decomposition_adopted` を確定する (topology-mapper 自身は提案のみ)。
+
+### Step 2.5: 実測 file 数での再 triage + packet 分解の採否確認
+
+**heavy レーンでのみ実行する** (Step 2 の「heavy レーンでは (light/block では評価しない)」と同じ区分)。
+light レーンは Step 1.5 で topology-mapper 自体を skip するため `.agent-evidence/impact-map.md` が
+存在せず、本 Step も skip する (light の定義上 `estimated_files ≤ 5` で block/packet 分解いずれの
+発火閾値にも届かないため、skip しても機能的損失はない)。
+
+topology-mapper が Step 2 で生成した `.agent-evidence/impact-map.md` の **Public entrypoints /
+Wiring points that MUST follow the change / Blast radius** 各節に列挙された変更対象・結線先ファイルを
+数え上げ、重複を除いた総数を **実測 `estimated_files`** として算出する (spec-curator が Step 1 で
+Risk 節に書いた `estimated_files: <N> (basis: ...)` は Step 2 実行前の当て推量であり、ここでの実測値に
+置き換える)。
+
+1. **block 閾値の再判定**: 実測 `estimated_files` が Step 1.5 の block レーンと同一の閾値
+   (`estimated_files > 30`) を超えたら、Step 1.5 の block レーンと**同じ手順**を取る:
+   `blocking_reasons` を列挙し `.agent-evidence/.active` を削除して停止する (implementer は起動しない)。
+   分割提案は Step 1.5 block レーン同様、topology-mapper と spec-grader DEEPEST を順に起動して
+   `AskUserQuestion(...)` でユーザーにキックオフを委ねる。
+2. **packet 分解採否の確定 (Must-1 の解決)**: Must-1 の発火条件式
+   `must_count >= 4 OR estimated_files >= 10 OR layers_touched >= 3` を、この実測 `estimated_files`
+   (と spec-curator の `must_count`、`impact-map.md` の `layers_touched`) で**再判定**する
+   (spec-curator の初期見積りではなく、この Step 2.5 の実測値を採用する)。
+   - 成立する場合、Step 2 で topology-mapper が最終応答テキストとして返した `packets[]` 分解案を
+     `.agent-evidence/work-packets.json` として永続化し、`decomposition_adopted: true` を書き込む
+     (Step 2 の「採否確定は Step 2.5 (後述) で orchestrator が行い」を解決)。
+   - 成立しない場合は `decomposition_adopted: false` を記録する (`work-packets.json` は作らなくてよい)。
+     Step 3 は通常の単発フローで進める。
+3. block にも該当せず packet 分解も不採用の場合は、そのまま Step 2.7 (書込プローブ) へ進む。
 
 ### Step 2.7: 書込プローブ (implementer 起動前の harness-env 検出 — 実測で必要と判明)
 background subagent は permission prompt を出せず、Write/Edit が **auto-deny で無音消失**しうる。
@@ -132,6 +182,50 @@ spec + Impact Map から埋めて渡す。**wire-first** (呼び出し側 placeh
 pivot を 2 回 (= 3 アプローチ) 試しても未達なら未完としてエスカレーションする (試行/pivot 履歴は commands.txt)。
 実装中は PostToolUse の policy hook が編集ごとにガード(no-prod-doubles / test-bypass)を回し、違反は exit 2 でブロックされる。
 実装者は wiring-map.json / commands.txt / completion-report.md を残す。
+
+### Step 3 の packet ループ分岐 (`work-packets.json` 採用時)
+
+`.agent-evidence/work-packets.json` が存在し `decomposition_adopted: true` の場合、Step 3 は
+**packet ループ**へ分岐する (通常の単発 Step 3 の代わりに、`packets[]` を `depends_on` の
+producer-before-consumer 順に 1 packet ずつ処理する):
+
+(a) packet 毎に implementer を起動する。既定は **`SendMessage` による同一 implementer への継続**
+    (packet contract = 対象 packet の `musts`/`target_files`/`done_when` + 前 packet の checkpoint
+    findings)。fresh 起動・escalation を挟むかどうかの**継続判定は後述の機械判定表による**
+    (enum のみで判定し、抽象裁量は禁止。判定表本体の定義は Must-3)。
+
+    **継続判定の機械判定表 (Must-3)**: 判定入力は全て決定論的 (checkpoint JSON の `verdict` 履歴 /
+    UTC タイムスタンプ / exit code) であり、抽象裁量は使わない。
+
+    | reason_code | 条件 | continuation_decision | 対応 |
+    |---|---|---|---|
+    | (既定・reason_code なし) | 上記いずれにも該当しない | `continue` | `SendMessage` で同一 implementer に次 packet + checkpoint findings を渡す |
+    | `fail-x2` | 同一 `packet_id` の checkpoint `verdict` が **FAIL 2 回連続** | `fresh` | findings 付き packet contract を再発行して新規 implementer を起動する (新規起動前に旧 agent の生死確認を行う — 既存 Step 3.5 のルールを適用) |
+    | `agent-dead` | `SendMessage` エラー / 応答なし | `fresh` | 同上 (新規 implementer 起動) |
+    | `collapsed-loop` | checkpoint 時点の `verify-failure-class.sh` が exit 2 | `escalate` | **fresh ではなく** 既存 **Step 6.5 oracle-change branch** へ routing する |
+    | `packet-over-budget` | packet 経過時間 > **`1.5 ×`** (レーン budget ÷ packet 数) | `escalate` | 残 packet の再分解提案、または `AskUserQuestion(...)` でユーザーにエスカレーション (fresh 継続はしない) |
+
+    **上記 4 つの `reason_code` 以外の理由での `fresh` 起動・`escalate` は禁止**である
+    (抽象裁量による fresh 起動・escalation の排除)。判定結果 (`checkpoint_verdict_history` /
+    `continuation_decision` / `reason_code` / `reason_detail`) は orchestrator が
+    `.agent-evidence/checkpoint-<packet_id>.json` に追記する (static-verifier.md の 2 段階書込を参照)。
+(b) 各 packet 完了ごとに決定論ゲート 5 本 (`verify-no-prod-doubles.sh` / `verify-test-bypass.sh` /
+    `verify-wiring.sh` / `verify-no-stub-placeholder.sh` / `verify-failure-class.sh`) を
+    **累積 diff に対して**実行する。既存スクリプト群は引数無し実行で常に committed∪working-tree
+    の累積差分を見るため (`verify-wiring.sh` 含む)、packet 対象ファイルへの引数絞り込みは
+    **行わない** (Step 4 と同一の引数無し形式。packet を跨いだ未配線 (cross-packet wiring 欠落) を
+    検出するため、対象ファイルを絞ると見逃す)。`commands.txt` に記録されるコマンドが Step 4 と
+    同一の引数無し形式であることを acceptance で確認する。
+(c) `static-verifier` を **checkpoint モード**で 1 回起動し (`packet_id`/`target_files`/`musts` を渡す)、
+    `.agent-evidence/checkpoint-<packet_id>.json` に保存する (`round-<N>/` とは別名前空間)。
+(d) 全 packet 完了後、既存のフル battery (Step 4〜8) を **task 全体で 1 回だけ**実行する
+    (毎 packet フル battery は行わない — 二段門の意味論を変更しない)。
+(e) Step 9 の収束ループで差し戻しが発生した場合、**該当 Must を含む packet のみを再オープン**する
+    (`work-packets.json` の `packets[].musts` を索引に機械的に対応付ける。Amendment A2 で確定済み。
+    task 全体をやり直さない)。
+
+`work-packets.json` が存在しない、または `decomposition_adopted: false` の場合は、この分岐を通らず
+従来通りの単発 Step 3 (上記) を実行する。
 
 ### Step 3.5: Implementer 完了ガード (skill が直接確認 — 実測で必要と判明)
 実装者は **大規模タスクで整形/テストに budget を取られ、結線を残したまま早期終了する**ことがある
@@ -211,7 +305,8 @@ Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
 ### Step 9: 収束 (最大 2 周) + Time budget 強制
 
 1. Step 5〜8 のいずれかが FAIL / `continue` を返したら、blocking findings を集めて `implementer` に戻し、
-   Step 3〜8 をやり直す (これで 1 周)。
+   Step 3〜8 をやり直す (これで 1 周)。(`work-packets.json` 採用時は Step 3 packet ループ分岐の (e) に
+   従い、blocking findings に対応する Must を含む packet のみを再オープンする — task 全体はやり直さない)
 2. **2 周終えても残る**、または `done-eval.json.escalate_to_human=true`、または同一指摘が 2 周連続
    (collapsed loop) なら **人間にエスカレーション**: 未解決の blocking findings と artifact パスを提示して停止する。
 3. done-evaluator が `done` → 成功。

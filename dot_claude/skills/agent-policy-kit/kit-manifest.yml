@@ -4,13 +4,16 @@ kit_version: "1.1.0"
 files:
   agent-evidence-gate.sh:
     template: templates/scripts/executable_agent-evidence-gate.sh
-    sha256: "75c5420515b1ca8af92b1ad40737ed3e34f60572120fe71e02eda90b0d4164d6"
+    sha256: "0ba21cac38b12c871aafe9aa6b51214a1e3a47bff9fa2d8fda8ef5995eb841df"
   agent-policy-hook.sh:
     template: templates/scripts/executable_agent-policy-hook.sh
     sha256: "ada315d0d10671505928d744181cef75ec605c00bf90c1716800689a6bcfce2d"
   agent-time-budget.sh:
     template: templates/scripts/executable_agent-time-budget.sh
     sha256: "dab3d7fafcfcdc4625f8bab7e3a81e0950195db85e53d30db46d1c15b8012b9b"
+  collapsed-loop-guard.sh:
+    template: templates/scripts/executable_collapsed-loop-guard.sh
+    sha256: "19d2920de14201eea33cf5740a6d522e0f57400ec088d483f5b3df64fbb97cd9"
   evidence-stamp.sh:
     template: templates/scripts/executable_evidence-stamp.sh
     sha256: "4b3586bed4cd8ac7435f4df4d69a39e9e9db90ed7cdfd77968574c8cd9ddb5dd"
@@ -28,7 +31,7 @@ files:
     sha256: "829ac58e167492165e12dc94035ddc0489446328687c944fc1d6987b631ba214"
   verify-failure-class.sh:
     template: templates/scripts/executable_verify-failure-class.sh
-    sha256: "ebe6224f7fa98c3e53c02c6b542f5b55ae35d79fbd4d989efe96cd71c6690e67"
+    sha256: "e6cefb4aac0e3d2cb4ead605cb61ef5868b65eb8bfe290622accf6eb044f8dee"
   verify-no-prod-doubles.sh:
     template: templates/scripts/executable_verify-no-prod-doubles.sh
     sha256: "87463be8a65a6370560ad1bba5a488f26edf007af9aa301302f4c996c2d6b6a0"

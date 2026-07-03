@@ -177,6 +177,9 @@ verify-failure-class.sh がこのファイルを読んで collapsed loop と未�
 - `target_test` は red entry で必須 (collapsed loop 判定のキー)。
 - `first_red.reason` が `"assertion_failure"` 以外 (compile/import error / typo) は **偽 RED** で 3-strike カウントに含めない
 - `started_at` は `date -u +%Y-%m-%dT%H:%M:%SZ` の実時刻を使う (作業順の代替値で埋めない。監査で wall clock と突合するため)。
+  **`started_at` は `date -u +%Y-%m-%dT%H:%M:%SZ` で取得した実時刻に限り、ローカル時刻を Z 付きで
+  書くことを禁止する** (2026-07-03 の recall-paper 走行で JST 時刻がそのまま `Z` 付きで記録された
+  実例があり、`verify-failure-class.sh` の未来時刻/逆行検査を誤検知させる原因になったため)。
 
 完全な schema (例):
 ```json

@@ -50,6 +50,66 @@ run_test "verify-failure-class missing phase" \
   "bash scripts/verify-failure-class.sh tests/fixtures/iterations_missing_phase.json" \
   1
 
+# --- verify-failure-class.sh: Must-7 UTC タイムスタンプ規律 (future / regressed) ---
+# started_at は相対生成できない (時刻依存) ため、テスト実行時刻基準で動的に fixture を生成する
+# (静的コミット禁止。agent-time-budget-hook Must-6 の iso8601_seconds_ago パターンを踏襲)。
+iso8601_offset() {
+  # $1 = 秒オフセット (負なら過去、正なら未来)
+  local offset="$1"
+  local epoch=$(( $(date -u +%s) + offset ))
+  if date -u -r "$epoch" +%Y-%m-%dT%H:%M:%SZ >/dev/null 2>&1; then
+    date -u -r "$epoch" +%Y-%m-%dT%H:%M:%SZ
+  else
+    date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%SZ
+  fi
+}
+
+future_ts_dir="$(mktemp -d)"
+cat > "$future_ts_dir/iterations.json" <<JSON
+{
+  "schema_version": "1.0",
+  "task_id": "fixture-future-timestamp",
+  "iterations": [
+    {"n": 1, "started_at": "$(iso8601_offset -300)", "phase": "red", "failure_class": "product", "target_test": "t1"},
+    {"n": 2, "started_at": "$(iso8601_offset 600)", "phase": "red", "failure_class": "product", "target_test": "t2"}
+  ]
+}
+JSON
+
+future_exit=0
+future_output="$(bash scripts/verify-failure-class.sh "$future_ts_dir/iterations.json" 2>&1)" || future_exit=$?
+if [ "$future_exit" -eq 1 ] && printf '%s' "$future_output" | grep -qi "future"; then
+  echo "PASSED: verify-failure-class future timestamp (started_at > now+5min) -> exit 1"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: verify-failure-class future timestamp (started_at > now+5min) -> exit 1 (exit=$future_exit, out=$future_output)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$future_ts_dir"
+
+regress_ts_dir="$(mktemp -d)"
+cat > "$regress_ts_dir/iterations.json" <<JSON
+{
+  "schema_version": "1.0",
+  "task_id": "fixture-regressed-timestamp",
+  "iterations": [
+    {"n": 1, "started_at": "$(iso8601_offset -300)", "phase": "red", "failure_class": "product", "target_test": "t1"},
+    {"n": 2, "started_at": "$(iso8601_offset -1200)", "phase": "red", "failure_class": "product", "target_test": "t2"}
+  ]
+}
+JSON
+
+regress_exit=0
+regress_output="$(bash scripts/verify-failure-class.sh "$regress_ts_dir/iterations.json" 2>&1)" || regress_exit=$?
+if [ "$regress_exit" -eq 1 ] && printf '%s' "$regress_output" | grep -Eiq "regress|逆行"; then
+  echo "PASSED: verify-failure-class regressed timestamp (逆行) -> exit 1"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: verify-failure-class regressed timestamp (逆行) -> exit 1 (exit=$regress_exit, out=$regress_output)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$regress_ts_dir"
+
 run_test "verify-allowlist-expiry quarantine valid" \
   "bash scripts/verify-allowlist-expiry.sh --quarantine tests/fixtures/quarantine_valid.yml" \
   0
@@ -125,6 +185,18 @@ run_test "verify-evidence-freshness match (live tree stamp)" \
   "bash scripts/verify-evidence-freshness.sh --evidence-dir '$match_evidence_dir'" \
   0
 rm -rf "$match_evidence_dir"
+
+# verify-evidence-freshness: checkpoint-<packet_id>.json (packet ループ, round-* とは別名前空間) は
+# 故意に古い tree_stamp を持っていても freshness 検査の対象外である (round-*/ のみ走査するため)。
+# round-* が無い場合とある場合の両方で exit 0 のままであることを確認する
+# (docs/specs/packet-decomposition-checkpoint.md Must-2 受入)。
+run_test "verify-evidence-freshness checkpoint-*.json ignored (no round-* dir)" \
+  "bash scripts/verify-evidence-freshness.sh --evidence-dir tests/fixtures/evidence-freshness/checkpoint-no-round" \
+  0
+
+run_test "verify-evidence-freshness checkpoint-*.json ignored (round-* dir present)" \
+  "bash scripts/verify-evidence-freshness.sh --evidence-dir tests/fixtures/evidence-freshness/checkpoint-with-round" \
+  0
 
 # --- agent-time-budget.sh (PreToolUse/PostToolUse hook) ---
 # started_at は相対生成できない (時刻依存) ため、テスト実行時に GNU/BSD 両対応の date で
@@ -288,6 +360,71 @@ else
 fi
 
 rm -rf "$wiring_fixture_dir"
+
+# --- agent-evidence-gate.sh: Amendment A5 3-branch (in-progress/complete/escalated) + Must-5 waiver ---
+AEG_BASE="tests/fixtures/agent-evidence-gate"
+
+run_test "agent-evidence-gate missing-done-eval -> block (done-eval.json)" \
+  "err=\$(bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/missing-done-eval < /dev/null 2>&1 1>/dev/null); ec=\$?; [ \"\$ec\" -eq 2 ] && printf '%s' \"\$err\" | grep -q 'done-eval.json'" \
+  0
+
+run_test "agent-evidence-gate missing-done-eval-escalated -> allow" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/missing-done-eval-escalated < /dev/null" \
+  0
+
+run_test "agent-evidence-gate in-progress-allow (A5, commands.txt non-empty) -> allow" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/in-progress-allow < /dev/null" \
+  0
+
+run_test "agent-evidence-gate in-progress-no-commands (A5) -> block" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/in-progress-no-commands < /dev/null" \
+  2
+
+run_test "agent-evidence-gate normal-done -> allow" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/normal-done < /dev/null" \
+  0
+
+run_test "agent-evidence-gate missing-core-evidence -> block (regression)" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/missing-core-evidence < /dev/null" \
+  2
+
+run_test "agent-evidence-gate gate-violation-unwaived -> block (POLICY VIOLATION)" \
+  "err=\$(bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/gate-violation-unwaived < /dev/null 2>&1 1>/dev/null); ec=\$?; [ \"\$ec\" -eq 2 ] && printf '%s' \"\$err\" | grep -q 'POLICY VIOLATION'" \
+  0
+
+run_test "agent-evidence-gate gate-violation-waived (期限内 waiver) -> allow" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/gate-violation-waived --quarantine $AEG_BASE/gate-violation-waived/quarantine.yml < /dev/null" \
+  0
+
+run_test "agent-evidence-gate gate-violation-expired-waiver -> block" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/gate-violation-expired-waiver --quarantine $AEG_BASE/gate-violation-expired-waiver/quarantine.yml < /dev/null" \
+  2
+
+# --- collapsed-loop-guard.sh (Must-6): PostToolUse live collapsed-loop 検出 ---
+CLG_BASE="tests/fixtures/collapsed-loop-guard"
+
+clg_collapsed_exit=0
+clg_collapsed_output="$(echo '{"hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"'"$PWD"'/'"$CLG_BASE"'/collapsed/iterations.json"}}' \
+  | bash scripts/collapsed-loop-guard.sh --evidence-dir "$CLG_BASE/collapsed" 2>&1 1>/dev/null)" || clg_collapsed_exit=$?
+if [ "$clg_collapsed_exit" -eq 2 ] && printf '%s' "$clg_collapsed_output" | grep -Eiq 'collapsed|collapse'; then
+  echo "PASSED: collapsed-loop-guard collapsed fixture -> exit 2 with collapsed warning"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: collapsed-loop-guard collapsed fixture -> exit 2 with collapsed warning (exit=$clg_collapsed_exit, out=$clg_collapsed_output)"
+  fail_count=$((fail_count + 1))
+fi
+
+run_test "collapsed-loop-guard healthy fixture -> allow" \
+  "echo '{\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"'\"\$PWD\"'/$CLG_BASE/healthy/iterations.json\"}}' | bash scripts/collapsed-loop-guard.sh --evidence-dir $CLG_BASE/healthy" \
+  0
+
+run_test "collapsed-loop-guard tool_name=Bash -> no-op allow" \
+  "echo '{\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{}}' | bash scripts/collapsed-loop-guard.sh --evidence-dir $CLG_BASE/collapsed" \
+  0
+
+run_test "collapsed-loop-guard hook_event_name 欠落 -> fail-safe allow" \
+  "echo '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"'\"\$PWD\"'/$CLG_BASE/collapsed/iterations.json\"}}' | bash scripts/collapsed-loop-guard.sh --evidence-dir $CLG_BASE/collapsed" \
+  0
 
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"
