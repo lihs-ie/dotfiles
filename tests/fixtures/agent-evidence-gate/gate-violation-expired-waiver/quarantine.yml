@@ -1,0 +1,9 @@
+entries: []
+gates:
+  - gate: "verify-wiring.sh"
+    evidence_url: "https://example.com/incident/1"
+    substitute_verification: "manual review confirmed no violation (fixture)"
+    owner: "@fixture-owner"
+    expires_at: "2020-01-01"
+    approved_by: "@fixture-approver"
+    approved_at: "2019-01-01"

@@ -1,0 +1,9 @@
+{
+  "iterations": [
+    {"n": 1, "phase": "red", "approach_id": "A1", "failure_class": "wiring-integration", "rca_one_line": "route not registered"},
+    {"n": 2, "phase": "green", "approach_id": "A1", "note": "all gates passed"},
+    {"n": 3, "phase": "red", "approach_id": "A2", "failure_class": "product", "rca_one_line": "missing empty-array guard"},
+    {"n": 4, "phase": "green", "approach_id": "A2", "note": "test passed, no regression"},
+    {"n": 5, "phase": "pivot", "approach_id": "A3", "failure_class": "test-oracle", "rca_one_line": "fixture diverges from spec M2"}
+  ]
+}

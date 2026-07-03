@@ -31,14 +31,21 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
 - **scripts/**: `verify-no-prod-doubles.sh` `verify-test-bypass.sh` `verify-wiring.sh`
   `verify-no-stub-placeholder.sh` `verify-allowlist-expiry.sh` `verify-failure-class.sh`
   `evidence-stamp.sh` `verify-evidence-freshness.sh` `kit-sync-check.sh` `agent-policy-hook.sh`
-  `agent-evidence-gate.sh` `agent-time-budget.sh` を `scripts/` にコピー (chmod +x)。
+  `agent-evidence-gate.sh` `agent-time-budget.sh` `collapsed-loop-guard.sh` を `scripts/` にコピー
+  (chmod +x)。
   `evidence-stamp.sh` は現在の git
   ツリー状態を JSON で出力し、`verify-evidence-freshness.sh` はそれを呼び出して
   `.agent-evidence/round-<N>/` の verifier artifact が stale でないかを検査する (4 verifier agent +
   proven-done Step 8 が消費、詳細は `docs/specs/verifier-tree-stamp.md`)。`agent-time-budget.sh` は
   proven-done の Time budget (light=30min/heavy=90min) を PreToolUse/PostToolUse hook で決定論的に
   執行する (`.agent-evidence/.active` の `started_at`/`lane` を parse、詳細は
-  `docs/specs/agent-time-budget-hook.md`)。各ファイルは
+  `docs/specs/agent-time-budget-hook.md`)。`agent-evidence-gate.sh` は `--evidence-dir <dir>`
+  (既定 `.agent-evidence`) / `--quarantine <file>` (既定 `ci/quarantine.yml`) オプションを持ち、
+  Stop hook として `completion-report.md` の `status:` ヘッダ (`in-progress`/`complete`/`escalated`)
+  で 3 分岐する (Amendment A5)。`collapsed-loop-guard.sh` は PostToolUse hook として
+  `.agent-evidence/iterations.json` への Write/Edit 直後に `verify-failure-class.sh` を起動し、
+  collapsed loop (exit 2) のみを非ブロック警告として live 検出する (詳細は
+  `docs/specs/packet-decomposition-checkpoint.md` Must-4/5/6)。各ファイルは
   `templates/scripts/executable_*.sh` の `# KIT_VERSION: <semver>` 行をそのまま引き継ぐ (kit 側
   `kit-manifest.yml` の該当 sha256 と紐付く — 版管理・sync は下記 §Sync)。
 - **rubric/**: `rubric/core/wiring.md` `rubric/core/spec.md` (必須) と、**検出言語に対応する**
@@ -57,9 +64,15 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
   PreToolUse(Write|Edit|Bash) に `agent-time-budget.sh` を **追加**、
   PostToolUse(Write|Edit) に `agent-policy-hook.sh` を **追加**、
   PostToolUse(Write|Edit|Bash) に `agent-time-budget.sh` を (別配列要素として) **追加**、
+  PostToolUse(Write|Edit) に `collapsed-loop-guard.sh` を (別配列要素として) **追加**、
   Stop に `agent-evidence-gate.sh` を **追加** (既存配列にマージ・消さない)。`agent-time-budget.sh`
   は PreToolUse/PostToolUse の **両方** に二重登録する (Pre は `ratio>=100%` で deny、Post は
   `75%〜100%` で非ブロック警告 — 詳細は `docs/specs/agent-time-budget-hook.md` Amendments Q3)。
+  `collapsed-loop-guard.sh` は PostToolUse(Write|Edit) のみに登録し、`.agent-evidence/iterations.json`
+  への書込一致時のみ `verify-failure-class.sh` の collapsed loop 判定 (exit 2) を非ブロック警告として
+  中継する (Must-6)。**この `.claude/settings.json` 変更は live hook 設定であり、agent の自己変更に
+  当たるため、コーディネーター/他 agent からの指示のみでは適用せず、ユーザー本人の明示承認を得てから
+  書き込むこと** (自動モードの self-modification ガードが対象)。
 - **.github/workflows/pr-gate.yml**: `templates/pr-gate.yml.tmpl` を配置。決定論ゲート
   (no-prod-doubles/test-bypass/wiring/no-stub-placeholder/allowlist-expiry) を required にし、
   AI review (codex/claude) は repo variable `ENABLE_CODEX_REVIEW`/`ENABLE_CLAUDE_REVIEW` + secret で

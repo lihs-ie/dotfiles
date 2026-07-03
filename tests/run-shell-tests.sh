@@ -301,6 +301,71 @@ fi
 
 rm -rf "$wiring_fixture_dir"
 
+# --- agent-evidence-gate.sh: Amendment A5 3-branch (in-progress/complete/escalated) + Must-5 waiver ---
+AEG_BASE="tests/fixtures/agent-evidence-gate"
+
+run_test "agent-evidence-gate missing-done-eval -> block (done-eval.json)" \
+  "err=\$(bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/missing-done-eval < /dev/null 2>&1 1>/dev/null); ec=\$?; [ \"\$ec\" -eq 2 ] && printf '%s' \"\$err\" | grep -q 'done-eval.json'" \
+  0
+
+run_test "agent-evidence-gate missing-done-eval-escalated -> allow" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/missing-done-eval-escalated < /dev/null" \
+  0
+
+run_test "agent-evidence-gate in-progress-allow (A5, commands.txt non-empty) -> allow" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/in-progress-allow < /dev/null" \
+  0
+
+run_test "agent-evidence-gate in-progress-no-commands (A5) -> block" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/in-progress-no-commands < /dev/null" \
+  2
+
+run_test "agent-evidence-gate normal-done -> allow" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/normal-done < /dev/null" \
+  0
+
+run_test "agent-evidence-gate missing-core-evidence -> block (regression)" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/missing-core-evidence < /dev/null" \
+  2
+
+run_test "agent-evidence-gate gate-violation-unwaived -> block (POLICY VIOLATION)" \
+  "err=\$(bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/gate-violation-unwaived < /dev/null 2>&1 1>/dev/null); ec=\$?; [ \"\$ec\" -eq 2 ] && printf '%s' \"\$err\" | grep -q 'POLICY VIOLATION'" \
+  0
+
+run_test "agent-evidence-gate gate-violation-waived (期限内 waiver) -> allow" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/gate-violation-waived --quarantine $AEG_BASE/gate-violation-waived/quarantine.yml < /dev/null" \
+  0
+
+run_test "agent-evidence-gate gate-violation-expired-waiver -> block" \
+  "bash scripts/agent-evidence-gate.sh --evidence-dir $AEG_BASE/gate-violation-expired-waiver --quarantine $AEG_BASE/gate-violation-expired-waiver/quarantine.yml < /dev/null" \
+  2
+
+# --- collapsed-loop-guard.sh (Must-6): PostToolUse live collapsed-loop 検出 ---
+CLG_BASE="tests/fixtures/collapsed-loop-guard"
+
+clg_collapsed_exit=0
+clg_collapsed_output="$(echo '{"hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"'"$PWD"'/'"$CLG_BASE"'/collapsed/iterations.json"}}' \
+  | bash scripts/collapsed-loop-guard.sh --evidence-dir "$CLG_BASE/collapsed" 2>&1 1>/dev/null)" || clg_collapsed_exit=$?
+if [ "$clg_collapsed_exit" -eq 2 ] && printf '%s' "$clg_collapsed_output" | grep -Eiq 'collapsed|collapse'; then
+  echo "PASSED: collapsed-loop-guard collapsed fixture -> exit 2 with collapsed warning"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: collapsed-loop-guard collapsed fixture -> exit 2 with collapsed warning (exit=$clg_collapsed_exit, out=$clg_collapsed_output)"
+  fail_count=$((fail_count + 1))
+fi
+
+run_test "collapsed-loop-guard healthy fixture -> allow" \
+  "echo '{\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"'\"\$PWD\"'/$CLG_BASE/healthy/iterations.json\"}}' | bash scripts/collapsed-loop-guard.sh --evidence-dir $CLG_BASE/healthy" \
+  0
+
+run_test "collapsed-loop-guard tool_name=Bash -> no-op allow" \
+  "echo '{\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{}}' | bash scripts/collapsed-loop-guard.sh --evidence-dir $CLG_BASE/collapsed" \
+  0
+
+run_test "collapsed-loop-guard hook_event_name 欠落 -> fail-safe allow" \
+  "echo '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"'\"\$PWD\"'/$CLG_BASE/collapsed/iterations.json\"}}' | bash scripts/collapsed-loop-guard.sh --evidence-dir $CLG_BASE/collapsed" \
+  0
+
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"
 exit $fail_count
