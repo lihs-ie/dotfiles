@@ -164,6 +164,22 @@ producer-before-consumer 順に 1 packet ずつ処理する):
     (packet contract = 対象 packet の `musts`/`target_files`/`done_when` + 前 packet の checkpoint
     findings)。fresh 起動・escalation を挟むかどうかの**継続判定は後述の機械判定表による**
     (enum のみで判定し、抽象裁量は禁止。判定表本体の定義は Must-3)。
+
+    **継続判定の機械判定表 (Must-3)**: 判定入力は全て決定論的 (checkpoint JSON の `verdict` 履歴 /
+    UTC タイムスタンプ / exit code) であり、抽象裁量は使わない。
+
+    | reason_code | 条件 | continuation_decision | 対応 |
+    |---|---|---|---|
+    | (既定・reason_code なし) | 上記いずれにも該当しない | `continue` | `SendMessage` で同一 implementer に次 packet + checkpoint findings を渡す |
+    | `fail-x2` | 同一 `packet_id` の checkpoint `verdict` が **FAIL 2 回連続** | `fresh` | findings 付き packet contract を再発行して新規 implementer を起動する (新規起動前に旧 agent の生死確認を行う — 既存 Step 3.5 のルールを適用) |
+    | `agent-dead` | `SendMessage` エラー / 応答なし | `fresh` | 同上 (新規 implementer 起動) |
+    | `collapsed-loop` | checkpoint 時点の `verify-failure-class.sh` が exit 2 | `escalate` | **fresh ではなく** 既存 **Step 6.5 oracle-change branch** へ routing する |
+    | `packet-over-budget` | packet 経過時間 > **`1.5 ×`** (レーン budget ÷ packet 数) | `escalate` | 残 packet の再分解提案、または `AskUserQuestion(...)` でユーザーにエスカレーション (fresh 継続はしない) |
+
+    **上記 4 つの `reason_code` 以外の理由での `fresh` 起動・`escalate` は禁止**である
+    (抽象裁量による fresh 起動・escalation の排除)。判定結果 (`checkpoint_verdict_history` /
+    `continuation_decision` / `reason_code` / `reason_detail`) は orchestrator が
+    `.agent-evidence/checkpoint-<packet_id>.json` に追記する (static-verifier.md の 2 段階書込を参照)。
 (b) 各 packet 完了ごとに決定論ゲート 5 本 (`verify-no-prod-doubles.sh` / `verify-test-bypass.sh` /
     `verify-wiring.sh` / `verify-no-stub-placeholder.sh` / `verify-failure-class.sh`) を
     **累積 diff に対して**実行する。既存スクリプト群は引数無し実行で常に committed∪working-tree
@@ -260,7 +276,8 @@ Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
 ### Step 9: 収束 (最大 2 周) + Time budget 強制
 
 1. Step 5〜8 のいずれかが FAIL / `continue` を返したら、blocking findings を集めて `implementer` に戻し、
-   Step 3〜8 をやり直す (これで 1 周)。
+   Step 3〜8 をやり直す (これで 1 周)。(`work-packets.json` 採用時は Step 3 packet ループ分岐の (e) に
+   従い、blocking findings に対応する Must を含む packet のみを再オープンする — task 全体はやり直さない)
 2. **2 周終えても残る**、または `done-eval.json.escalate_to_human=true`、または同一指摘が 2 周連続
    (collapsed loop) なら **人間にエスカレーション**: 未解決の blocking findings と artifact パスを提示して停止する。
 3. done-evaluator が `done` → 成功。
