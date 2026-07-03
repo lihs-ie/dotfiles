@@ -50,6 +50,66 @@ run_test "verify-failure-class missing phase" \
   "bash scripts/verify-failure-class.sh tests/fixtures/iterations_missing_phase.json" \
   1
 
+# --- verify-failure-class.sh: Must-7 UTC タイムスタンプ規律 (future / regressed) ---
+# started_at は相対生成できない (時刻依存) ため、テスト実行時刻基準で動的に fixture を生成する
+# (静的コミット禁止。agent-time-budget-hook Must-6 の iso8601_seconds_ago パターンを踏襲)。
+iso8601_offset() {
+  # $1 = 秒オフセット (負なら過去、正なら未来)
+  local offset="$1"
+  local epoch=$(( $(date -u +%s) + offset ))
+  if date -u -r "$epoch" +%Y-%m-%dT%H:%M:%SZ >/dev/null 2>&1; then
+    date -u -r "$epoch" +%Y-%m-%dT%H:%M:%SZ
+  else
+    date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%SZ
+  fi
+}
+
+future_ts_dir="$(mktemp -d)"
+cat > "$future_ts_dir/iterations.json" <<JSON
+{
+  "schema_version": "1.0",
+  "task_id": "fixture-future-timestamp",
+  "iterations": [
+    {"n": 1, "started_at": "$(iso8601_offset -300)", "phase": "red", "failure_class": "product", "target_test": "t1"},
+    {"n": 2, "started_at": "$(iso8601_offset 600)", "phase": "red", "failure_class": "product", "target_test": "t2"}
+  ]
+}
+JSON
+
+future_exit=0
+future_output="$(bash scripts/verify-failure-class.sh "$future_ts_dir/iterations.json" 2>&1)" || future_exit=$?
+if [ "$future_exit" -eq 1 ] && printf '%s' "$future_output" | grep -qi "future"; then
+  echo "PASSED: verify-failure-class future timestamp (started_at > now+5min) -> exit 1"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: verify-failure-class future timestamp (started_at > now+5min) -> exit 1 (exit=$future_exit, out=$future_output)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$future_ts_dir"
+
+regress_ts_dir="$(mktemp -d)"
+cat > "$regress_ts_dir/iterations.json" <<JSON
+{
+  "schema_version": "1.0",
+  "task_id": "fixture-regressed-timestamp",
+  "iterations": [
+    {"n": 1, "started_at": "$(iso8601_offset -300)", "phase": "red", "failure_class": "product", "target_test": "t1"},
+    {"n": 2, "started_at": "$(iso8601_offset -1200)", "phase": "red", "failure_class": "product", "target_test": "t2"}
+  ]
+}
+JSON
+
+regress_exit=0
+regress_output="$(bash scripts/verify-failure-class.sh "$regress_ts_dir/iterations.json" 2>&1)" || regress_exit=$?
+if [ "$regress_exit" -eq 1 ] && printf '%s' "$regress_output" | grep -Eiq "regress|逆行"; then
+  echo "PASSED: verify-failure-class regressed timestamp (逆行) -> exit 1"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: verify-failure-class regressed timestamp (逆行) -> exit 1 (exit=$regress_exit, out=$regress_output)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$regress_ts_dir"
+
 run_test "verify-allowlist-expiry quarantine valid" \
   "bash scripts/verify-allowlist-expiry.sh --quarantine tests/fixtures/quarantine_valid.yml" \
   0

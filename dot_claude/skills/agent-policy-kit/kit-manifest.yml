@@ -31,7 +31,7 @@ files:
     sha256: "829ac58e167492165e12dc94035ddc0489446328687c944fc1d6987b631ba214"
   verify-failure-class.sh:
     template: templates/scripts/executable_verify-failure-class.sh
-    sha256: "ebe6224f7fa98c3e53c02c6b542f5b55ae35d79fbd4d989efe96cd71c6690e67"
+    sha256: "e6cefb4aac0e3d2cb4ead605cb61ef5868b65eb8bfe290622accf6eb044f8dee"
   verify-no-prod-doubles.sh:
     template: templates/scripts/executable_verify-no-prod-doubles.sh
     sha256: "87463be8a65a6370560ad1bba5a488f26edf007af9aa301302f4c996c2d6b6a0"
