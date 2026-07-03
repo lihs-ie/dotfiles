@@ -26,7 +26,15 @@ description: モック濫用と未配線完了報告を防ぐ三層ループの�
    その旨を警告する。
 4. **spec 前提**: `docs/specs/<feature>.md` が在るか確認する。**無ければ** Step 1 で先に仕様化する
    (`/grill-me` で人間と認識合わせ → spec-curator で正規化)。
-5. `.agent-evidence/` を作り、**実行中マーカー** を立てる。`.agent-evidence/.active` の正規スキーマは
+5. **既存成果物の退避 (Amendment A4)**: `.active` を書く前に、`.agent-evidence/` 直下に前タスクの
+   implementer 成果物 (`iterations.json` / `commands.txt` / `wiring-map.json` / `completion-report.md` /
+   `round-N/` / `wiring-waivers.txt`) が残っていれば、`.agent-evidence/_archive/<旧 task_id>/` へ
+   退避する (旧 task_id は残置 `.active` の `task=` 行、または `completion-report.md` の spec 参照から
+   判定する)。退避しないと次タスクが旧 task_id の `iterations.json` を引き継ぎ、
+   `verify-failure-class.sh`・failure_class 分布・freshness 検査が前タスクのデータを誤読する
+   (dogfood 走行で topology-mapper が前タスク `verify-wiring-long-lived-branch-blindspot` の残骸と
+   期限なし wiring-waiver の残置を実検出した事故に基づく)。
+6. `.agent-evidence/` を作り、**実行中マーカー** を立てる。`.agent-evidence/.active` の正規スキーマは
    次の 3 行 (`scripts/agent-time-budget.sh` PreToolUse/PostToolUse hook がこれを parse する前提):
    ```
    task=<task>
@@ -37,7 +45,7 @@ description: モック濫用と未配線完了報告を防ぐ三層ループの�
    `task=<task>` と `started_at=<ISO8601 UTC>` の **2 行のみ** を書く (`lane=` はまだ書かない)。
    `lane=` は Step 1.5 (Two-lane router) でレーン確定後に追記する
    (これがある間だけ Stop hook の証跡ゲートが発火する)。
-6. TaskCreate で進捗 TODO (Spec/Topology/Implement/Gate/Static/Runtime/SpecGrade/Done) を作る。
+7. TaskCreate で進捗 TODO (Spec/Topology/Implement/Gate/Static/Runtime/SpecGrade/Done) を作る。
 
 > マーカーは**必ず最後に消す** (done でも人間エスカレーションでも)。途中で異常終了して
 > `.active` が残った場合に備え、Stop hook のメッセージは解除方法を案内する。
@@ -103,13 +111,26 @@ spec 受け取り後、以下の判定式でレーンを決める (agent-policy.
 - **block レーン**: blocking_reasons を列挙し `.agent-evidence/.active` を削除して停止する。implementer は起動しない。topology-mapper と spec-grader DEEPEST を順に起動して spec 分割推奨を出し、`AskUserQuestion(...)` でユーザーにキックオフを委ねる。
 - **light レーン**: topology-mapper / static-verifier / spec-grader を skip する。runtime-verifier は entrypoint に touch した場合のみ起動する。
 - light/heavy の区別は Time budget 閾値に影響する (light=30min / heavy=90min)。
-- レーン確定直後、`.agent-evidence/.active` に `lane=<light|heavy>` を追記する (Step 0 で書いた
-  `task=`/`started_at=` の 2 行に 1 行足すのみで上書きしない。以後 `agent-time-budget.sh` hook が
-  正しい budget で経過率を計算できるようになる)。
+- レーン確定直後、`.agent-evidence/.active` に `lane=<light|heavy>` を追記すると**同時に**、
+  `started_at` を **現在 UTC で再スタンプ**する (Amendment A3。`date -u +%Y-%m-%dT%H:%M:%SZ` を
+  再実行し、Step 0 で書いた値を置き換える — grill-me / spec 化に要した人間対話時間を implementer の
+  実装 budget から除外するための修正。2026-06-29 事故 (`agent-time-budget-hook` の動機) の対象は
+  autonomous 実装ループの暴走であり、人間対話の待ち時間ではないため)。以後 `.active` は
+  `task=`/`started_at=`/`lane=` の 3 行になり、`agent-time-budget.sh` hook はこの再スタンプ後の
+  時刻を起点に budget 経過率を計算する。
 
 ### Step 2: Topology
 `topology-mapper` を起動し Impact Map (入口→中継→出口の wire-map + 必須配線点) を生成、
 `.agent-evidence/impact-map.md` に保存。orphan(到達不能になりうる)経路の警告があれば spec に反映。
+
+**heavy レーンでは** (light/block では評価しない)、topology-mapper が Impact Map 生成と
+**同一呼び出し内**で (追加の Agent 呼び出しを発生させずに) 発火条件式
+`must_count >= 4 OR estimated_files >= 10 OR layers_touched >= 3` を評価し、成立すれば
+`packet_id`/`musts`/`target_files`/`done_when`/`depends_on` の 5 フィールドを持つ `packets[]` 分解案
+(producer-before-consumer 順序) を最終応答テキストとして返す (Must-1)。`.agent-evidence/impact-map.md`
+には新設フィールド `layers_touched` (変更が跨ぐ層数) を含める。分解案の**採否確定は Step 2.5 (後述)
+で orchestrator が行い**、採用時は `.agent-evidence/work-packets.json` として永続化し
+`decomposition_adopted` を確定する (topology-mapper 自身は提案のみ)。
 
 ### Step 2.7: 書込プローブ (implementer 起動前の harness-env 検出 — 実測で必要と判明)
 background subagent は permission prompt を出せず、Write/Edit が **auto-deny で無音消失**しうる。

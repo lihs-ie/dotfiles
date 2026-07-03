@@ -20,11 +20,26 @@ model: sonnet
 3. 変更時に **追随更新が必要な結線点** を列挙する (`wiring_manifest.yml` の `when` にマッチさせる)。
 4. **設定配線**: env/config/DI 登録/feature flag が正しい値で配線される必要があるかを確認する。
 5. 既存の類似実装・命名・テスト配置を 1〜2 例添える (実装者が踏襲できるように)。
+6. **packet 分解判定 (heavy レーンでのみ評価)**: 発火条件式
+   `must_count >= 4 OR estimated_files >= 10 OR layers_touched >= 3` を評価する。この評価は
+   **heavy レーンでのみ**行い、light/block レーンでは評価しない (レーン判定自体は orchestrator の
+   Two-lane router が既に確定させている前提)。
+   - 発火した場合、この impact map 生成と**同一呼び出し内**で (追加の Agent 呼び出しを発生させずに)
+     packet 分解案を出す。分解案の出力スキーマは `packet_id` / `musts` / `target_files` / `done_when` /
+     `depends_on` の 5 フィールドを持つ `packets[]` 配列であり、ある packet が定義する symbol の
+     消費者を含む packet は `depends_on` で先行 packet を指す **producer-before-consumer 順序**
+     (producer が定義する packet を、その consumer packet より前に並べる) で並べる。
+   - topology-mapper は Write tool を持たないため、分解案は `.agent-evidence/work-packets.json` へ
+     **直接書き込まず**、最終応答テキストとして返す。永続化と `decomposition_adopted` の確定は
+     **orchestrator が行う** (topology-mapper 自身は提案のみ。**採否確定は orchestrator の責務**)。
+   - 発火しない場合 (light/block レーン、または条件不成立) は packet 分解案を省略してよい。
 
 ## 出力 (`.agent-evidence/impact-map.md`)
 
 ```md
 # Impact Map
+
+`layers_touched: <N>` — 変更が跨ぐ層数 (domain/application/infrastructure/UI/config/test 等の整数カウント。新設フィールド)
 
 ## Wire-map (入口→中継→出口)
 - 入口: <route/main/event> → 中継: <handler→service> → 出口: <repo/adapter/DB/UI>
@@ -49,3 +64,30 @@ model: sonnet
 ```
 
 到達できない (orphan になりうる) 経路を見つけたら **最優先で警告** すること。それが未配線完了の芽。
+
+## Packet 分解案の出力形式 (heavy レーンで発火時のみ・最終応答テキストの末尾に付す)
+
+```json
+{
+  "trigger_basis": {"must_count": <N>, "estimated_files": <N>, "layers_touched": <N>},
+  "packets": [
+    {
+      "packet_id": "P1",
+      "musts": ["Must-1"],
+      "target_files": ["path/a.ts", "path/b.ts"],
+      "done_when": "P1 の Must が checkpoint verdict PASS/CONCERNS で満たされる",
+      "depends_on": []
+    },
+    {
+      "packet_id": "P2",
+      "musts": ["Must-2"],
+      "target_files": ["path/c.ts"],
+      "done_when": "P2 の Must が checkpoint verdict PASS/CONCERNS で満たされる",
+      "depends_on": ["P1"]
+    }
+  ]
+}
+```
+
+orchestrator はこの提案を受け取り、`.agent-evidence/work-packets.json` として永続化するかどうか
+(`decomposition_adopted`) を確定する。topology-mapper はこの確定を行わない。
