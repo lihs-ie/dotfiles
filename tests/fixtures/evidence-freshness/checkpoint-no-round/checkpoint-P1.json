@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "packet_id": "P1",
+  "task_id": "fixture-task",
+  "attempt": 1,
+  "verdict": "PASS",
+  "severity": "P3",
+  "tree_stamp": {
+    "git_sha": "0000000000000000000000000000000000dead",
+    "dirty_diff_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "self_stamp_before": {
+    "git_sha": "0000000000000000000000000000000000dead",
+    "dirty_diff_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "self_stamp_after": {
+    "git_sha": "0000000000000000000000000000000000dead",
+    "dirty_diff_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "findings": [],
+  "required_followups": []
+}

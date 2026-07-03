@@ -126,6 +126,18 @@ run_test "verify-evidence-freshness match (live tree stamp)" \
   0
 rm -rf "$match_evidence_dir"
 
+# verify-evidence-freshness: checkpoint-<packet_id>.json (packet ループ, round-* とは別名前空間) は
+# 故意に古い tree_stamp を持っていても freshness 検査の対象外である (round-*/ のみ走査するため)。
+# round-* が無い場合とある場合の両方で exit 0 のままであることを確認する
+# (docs/specs/packet-decomposition-checkpoint.md Must-2 受入)。
+run_test "verify-evidence-freshness checkpoint-*.json ignored (no round-* dir)" \
+  "bash scripts/verify-evidence-freshness.sh --evidence-dir tests/fixtures/evidence-freshness/checkpoint-no-round" \
+  0
+
+run_test "verify-evidence-freshness checkpoint-*.json ignored (round-* dir present)" \
+  "bash scripts/verify-evidence-freshness.sh --evidence-dir tests/fixtures/evidence-freshness/checkpoint-with-round" \
+  0
+
 # --- agent-time-budget.sh (PreToolUse/PostToolUse hook) ---
 # started_at は相対生成できない (時刻依存) ため、テスト実行時に GNU/BSD 両対応の date で
 # 動的に .active fixture を生成する (docs/specs/agent-time-budget-hook.md Must-6)。

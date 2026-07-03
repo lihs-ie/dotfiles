@@ -154,6 +154,34 @@ pivot を 2 回 (= 3 アプローチ) 試しても未達なら未完としてエ
 実装中は PostToolUse の policy hook が編集ごとにガード(no-prod-doubles / test-bypass)を回し、違反は exit 2 でブロックされる。
 実装者は wiring-map.json / commands.txt / completion-report.md を残す。
 
+### Step 3 の packet ループ分岐 (`work-packets.json` 採用時)
+
+`.agent-evidence/work-packets.json` が存在し `decomposition_adopted: true` の場合、Step 3 は
+**packet ループ**へ分岐する (通常の単発 Step 3 の代わりに、`packets[]` を `depends_on` の
+producer-before-consumer 順に 1 packet ずつ処理する):
+
+(a) packet 毎に implementer を起動する。既定は **`SendMessage` による同一 implementer への継続**
+    (packet contract = 対象 packet の `musts`/`target_files`/`done_when` + 前 packet の checkpoint
+    findings)。fresh 起動・escalation を挟むかどうかの**継続判定は後述の機械判定表による**
+    (enum のみで判定し、抽象裁量は禁止。判定表本体の定義は Must-3)。
+(b) 各 packet 完了ごとに決定論ゲート 5 本 (`verify-no-prod-doubles.sh` / `verify-test-bypass.sh` /
+    `verify-wiring.sh` / `verify-no-stub-placeholder.sh` / `verify-failure-class.sh`) を
+    **累積 diff に対して**実行する。既存スクリプト群は引数無し実行で常に committed∪working-tree
+    の累積差分を見るため (`verify-wiring.sh` 含む)、packet 対象ファイルへの引数絞り込みは
+    **行わない** (Step 4 と同一の引数無し形式。packet を跨いだ未配線 (cross-packet wiring 欠落) を
+    検出するため、対象ファイルを絞ると見逃す)。`commands.txt` に記録されるコマンドが Step 4 と
+    同一の引数無し形式であることを acceptance で確認する。
+(c) `static-verifier` を **checkpoint モード**で 1 回起動し (`packet_id`/`target_files`/`musts` を渡す)、
+    `.agent-evidence/checkpoint-<packet_id>.json` に保存する (`round-<N>/` とは別名前空間)。
+(d) 全 packet 完了後、既存のフル battery (Step 4〜8) を **task 全体で 1 回だけ**実行する
+    (毎 packet フル battery は行わない — 二段門の意味論を変更しない)。
+(e) Step 9 の収束ループで差し戻しが発生した場合、**該当 Must を含む packet のみを再オープン**する
+    (`work-packets.json` の `packets[].musts` を索引に機械的に対応付ける。Amendment A2 で確定済み。
+    task 全体をやり直さない)。
+
+`work-packets.json` が存在しない、または `decomposition_adopted: false` の場合は、この分岐を通らず
+従来通りの単発 Step 3 (上記) を実行する。
+
 ### Step 3.5: Implementer 完了ガード (skill が直接確認 — 実測で必要と判明)
 実装者は **大規模タスクで整形/テストに budget を取られ、結線を残したまま早期終了する**ことがある
 (関数は実装したが呼び出し側の placeholder を置換し忘れる)。fitness hook も verify-wiring の
