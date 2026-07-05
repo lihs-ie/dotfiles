@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.3.0
+# KIT_VERSION: 1.3.1
 # agent-policy: 本番パスへの test double 混入を検出する。
 # - ファイル名 (mock/stub/fake/dummy/spy.<ext>)
 # - mocking library の import / 呼び出し (jest.mock, vi.mock, sinon, gomock, testify/mock,
@@ -15,7 +15,7 @@ cd "$repository_root"
 if [ "$#" -gt 0 ]; then
   changed="$1"
 else
-  base="${BASE_REF:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@')}"
+  base="${BASE_REF:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || true)}"
   [ -z "${base:-}" ] && base="origin/main"
   if git rev-parse --verify "$base" >/dev/null 2>&1; then
     changed="$(git diff --name-only --diff-filter=ACMRT "$base"...HEAD)"

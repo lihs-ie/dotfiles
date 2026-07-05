@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.3.0
+# KIT_VERSION: 1.3.1
 # agent-policy: PreToolUse(Write|Edit) と PostToolUse(Write|Edit) の両方に登録する hook。
 # PostToolUse: 編集された 1 ファイルに対し no-prod-doubles / test-bypass を即時チェックし、
 #   違反なら exit 2 で編集をブロックする (既存動作、無変更)。

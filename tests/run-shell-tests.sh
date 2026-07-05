@@ -1163,6 +1163,34 @@ run_test "portable_http_probe (2) forced-fallback path (python3 urllib, no curl/
 rm -rf "$php_fallback_dir" "$php_test_dir"
 pkill -f "$php_server_pid_pattern" 2>/dev/null || true
 
+# --- BASE_REF fallback: origin/HEAD の無い checkout で abort しない (kit 1.3.1 回帰) ---
+# actions/checkout は refs/remotes/origin/HEAD を設定しないため、BASE_REF 未設定の CI step では
+# `base="${BASE_REF:-$(git symbolic-ref refs/remotes/origin/HEAD ...)}"` の command substitution が
+# exit 128 になり、set -euo pipefail 下でスクリプトごと abort していた
+# (native-trace pr-gate policy job が全 PR で出力ゼロ・exit 128 になった実測事故)。
+# 期待挙動: fallback が空 -> origin/main -> rev-parse 検証で不在を吸収し、正常判定まで到達する。
+no_origin_head_dir="$(mktemp -d)"
+git -C "$no_origin_head_dir" init -q
+git -C "$no_origin_head_dir" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+printf 'rules: []\n' > "$no_origin_head_dir/wiring_manifest.yml"
+
+run_test "verify-no-stub-placeholder: origin/HEAD なし + BASE_REF 未設定 -> exit 0 (128 abort しない)" \
+  "env -u BASE_REF CLAUDE_PROJECT_DIR=$no_origin_head_dir bash $REPO_ROOT/scripts/verify-no-stub-placeholder.sh" \
+  0
+
+run_test "verify-no-prod-doubles: origin/HEAD なし + BASE_REF 未設定 -> exit 0 (128 abort しない)" \
+  "env -u BASE_REF CLAUDE_PROJECT_DIR=$no_origin_head_dir bash $REPO_ROOT/scripts/verify-no-prod-doubles.sh" \
+  0
+
+run_test "verify-test-bypass: origin/HEAD なし + BASE_REF 未設定 -> exit 0 (128 abort しない)" \
+  "env -u BASE_REF CLAUDE_PROJECT_DIR=$no_origin_head_dir bash $REPO_ROOT/scripts/verify-test-bypass.sh" \
+  0
+
+run_test "verify-wiring: origin/HEAD なし + BASE_REF 未設定 -> exit 0 (128 abort しない)" \
+  "env -u BASE_REF CLAUDE_PROJECT_DIR=$no_origin_head_dir bash $REPO_ROOT/scripts/verify-wiring.sh" \
+  0
+rm -rf "$no_origin_head_dir"
+
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"
 exit $fail_count

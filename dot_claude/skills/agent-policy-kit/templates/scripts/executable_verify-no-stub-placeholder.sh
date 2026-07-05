@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.3.0
+# KIT_VERSION: 1.3.1
 # agent-policy: 本番経路に残った高シグナルな placeholder stub を検出する。
 # 「関数は実装したが呼び出し側の placeholder を置換し忘れる」未配線を、ファイル共変更検査
 # (verify-wiring.sh) でも no-prod-doubles でも捕捉できないため、明示マーカーで補足する。
@@ -20,7 +20,7 @@ cd "$repository_root"
 if [ "$#" -gt 0 ]; then
   changed="$1"
 else
-  base="${BASE_REF:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@')}"
+  base="${BASE_REF:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || true)}"
   [ -z "${base:-}" ] && base="origin/main"
   if git rev-parse --verify "$base" >/dev/null 2>&1; then
     changed="$(git diff --name-only --diff-filter=ACMRT "$base"...HEAD)"
