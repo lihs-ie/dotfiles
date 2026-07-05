@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.3.0
+# KIT_VERSION: 1.3.1
 # agent-policy: 本番経路に test-only bypass が無いか検出する。
 # 例: if (process.env.NODE_ENV === 'test') return fake; / NODE_ENV==='test' 分岐 /
 #     APP_ENV == "test" / isTest ショートサーキット / Haskell の isTestEnv 分岐。
@@ -12,7 +12,7 @@ cd "$repository_root"
 if [ "$#" -gt 0 ]; then
   changed="$1"
 else
-  base="${BASE_REF:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@')}"
+  base="${BASE_REF:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || true)}"
   [ -z "${base:-}" ] && base="origin/main"
   if git rev-parse --verify "$base" >/dev/null 2>&1; then
     changed="$(git diff --name-only --diff-filter=ACMRT "$base"...HEAD)"

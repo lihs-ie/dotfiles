@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.3.0
+# KIT_VERSION: 1.3.1
 # agent-policy: portable shell helpers for cross-platform (macOS darwin sandbox / Linux CI) smoke
 # and probe execution (docs/specs/harness-campaign-fix2-6.md Must-19). Sourceable library —
 # defines functions only, has **no side effects on source** (no top-level execution, no `set -e`

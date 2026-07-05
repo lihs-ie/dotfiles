@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.3.0
+# KIT_VERSION: 1.3.1
 # agent-policy: proven-done の Time budget (light=30min / heavy=90min) を hook で決定論的に執行する。
 # PreToolUse **と** PostToolUse の両方に登録し、stdin の hook JSON の hook_event_name で分岐する
 # (docs/specs/agent-time-budget-hook.md Amendments Q3):

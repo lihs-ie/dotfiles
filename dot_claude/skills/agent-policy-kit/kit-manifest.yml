@@ -1,52 +1,52 @@
 # kit-manifest.yml — agent-policy-kit 単一 KIT_VERSION + per-file sha256 manifest.
 # 生成: kit-manifest-update.sh。手編集禁止 — templates/scripts/ を直してから再生成する。
-kit_version: "1.3.0"
+kit_version: "1.3.1"
 files:
   agent-evidence-gate.sh:
     template: templates/scripts/executable_agent-evidence-gate.sh
-    sha256: "88e2b6c1b32c4f4b6b409347e534a773280df7e126dd61437dc6a8f95c7fbb34"
+    sha256: "6e39373c47c712467baf156ff8bd5b189e56ee6e0bd94899cba6151e09020315"
   agent-policy-hook.sh:
     template: templates/scripts/executable_agent-policy-hook.sh
-    sha256: "9c9c60917a525a4dc09b7600bd39a2b41c30761e24454b5ad39e573a0a34241e"
+    sha256: "a03961303ebace1b336892e4aef926883b80b58d440b5056037395be09ea72e5"
   agent-time-budget.sh:
     template: templates/scripts/executable_agent-time-budget.sh
-    sha256: "5dac874d78b64c1b790d9590b20ef6619c97a76abf909a887af282ae11bb7581"
+    sha256: "d0dd8fa1dabe9beee50d668718934a517921600282ee2737881dda6d190ce01e"
   collapsed-loop-guard.sh:
     template: templates/scripts/executable_collapsed-loop-guard.sh
-    sha256: "96d0bca47bc9ab7360af1b1f85af334190f4c22e6cbc2d1f9b3222d0146d53fd"
+    sha256: "b247e6c77fe9c7e8562fb8e47d57091ff2a19b843b0f49a9ba3fd4c7903f88ea"
   evidence-stamp.sh:
     template: templates/scripts/executable_evidence-stamp.sh
-    sha256: "b684d403aafb33d1ea1ba2892bd0c1f2c5d946a03a22f0085a288f23f73516bf"
+    sha256: "eedb1e3fa429e3cc74c4ca2ef967acbfa0f7effe01eae2e132cbac77b2248264"
   kit-manifest-update.sh:
     template: templates/scripts/executable_kit-manifest-update.sh
-    sha256: "8a1bce8767be9ba5859484ea2858f36d9c527756e1daf652ca74f61968cf56d1"
+    sha256: "c21278a4783801e230a370163aefbab3c5778f57d1784f5bb1dd71fc2c0dcae3"
   kit-sync-check.sh:
     template: templates/scripts/executable_kit-sync-check.sh
-    sha256: "4c03e1cec2a07cd23e0196e8e409f1a4d120af460e6c90bc5179dbbf04dafc64"
+    sha256: "42554b2cd04c4a064646fe404bc13d48d1cfaaf4bfc9e5e05a305b90f96d0ab6"
   portable.sh:
     template: templates/scripts/executable_portable.sh
-    sha256: "e6546bd48d4141df234359f4b89d7bd2d75d18b11b06392d0d3b1120e7638f76"
+    sha256: "1bd3f9b716e376060fd04db23f8cd7980f875ffbb08f90fec0b18b28787b97ec"
   verify-allowlist-expiry.sh:
     template: templates/scripts/executable_verify-allowlist-expiry.sh
-    sha256: "e9d386b1aac29e36754b12ed99d0546added404d4477f118c95ed09cd57ea663"
+    sha256: "ad2b6466361d0646cd1f09080d0e8524b4cc22b7cc23035000e1cc2244d879ae"
   verify-evidence-freshness.sh:
     template: templates/scripts/executable_verify-evidence-freshness.sh
-    sha256: "b6043012f66cdb367368b583e11d263978f9e0841b0223f35142e08723e9d1b6"
+    sha256: "e0abdc43e556fe8d64371dde3984df159c3b7d1c9c112c691f4504c7e7b4583e"
   verify-failure-class.sh:
     template: templates/scripts/executable_verify-failure-class.sh
-    sha256: "f8e663af738e499a76640d63009a8bdc979a1f59697d0a2ae5a74aadd9f9a067"
+    sha256: "ce362a6dc1241ce8f6997b9025dbc523bc903a21bbb0cb2ec419602e3b98f228"
   verify-guard-integrity.sh:
     template: templates/scripts/executable_verify-guard-integrity.sh
-    sha256: "ff69a7f91a2bd8d267bbbcf93dd279ed557f1dc0aad2f927956781b1eafbb74c"
+    sha256: "96e20f57caac77e0996f4daa307ba51447cffc6a870adb4d0d795d993bdcbcfd"
   verify-no-prod-doubles.sh:
     template: templates/scripts/executable_verify-no-prod-doubles.sh
-    sha256: "c704be8c57014a0a1695318fdc339f9c7f60dc3e9e4b2526872cd60e906da96f"
+    sha256: "3c83aae98511da81fcf671424d969f5ef002032d87b5ca61c202f426993b8cb4"
   verify-no-stub-placeholder.sh:
     template: templates/scripts/executable_verify-no-stub-placeholder.sh
-    sha256: "ff907ba6388f3daf45a812c60de4d315123a2ddf338666168b6dbb8950205e2f"
+    sha256: "2131000017998e9d27a4488660f17cbdcfee092654452ba266f51f18b7880457"
   verify-test-bypass.sh:
     template: templates/scripts/executable_verify-test-bypass.sh
-    sha256: "31dd4bcaf0d3b26c7045a4c6dceba4de0c6f2abf408c8098cef39d6889c7f1bf"
+    sha256: "dffca663d7d66002a4af31588fc9618411921aeb54b0e37810f2574a475fa4ab"
   verify-wiring.sh:
     template: templates/scripts/executable_verify-wiring.sh
-    sha256: "37561b98e34041ee4b81b0094ac2b457810a37954f4f4122a8329db900d4c2be"
+    sha256: "7e02fb5fb76ce0ed6d7c968fa42ad357a59d249626272c4e484538c846d84d78"

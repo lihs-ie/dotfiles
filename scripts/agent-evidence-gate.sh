@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.3.0
+# KIT_VERSION: 1.3.1
 # agent-policy: Stop hook 証跡完了ゲート (Amendment A5)。
 # proven-done 実行中マーカー (.agent-evidence/.active) がある時だけ発火する。
 # マーカーが無い通常セッションでは完全な no-op (他作業を妨げない)。

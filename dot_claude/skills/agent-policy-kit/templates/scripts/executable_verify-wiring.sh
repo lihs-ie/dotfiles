@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.3.0
+# KIT_VERSION: 1.3.1
 # agent-policy: wiring_manifest.yml に基づき「実装に対し配線が追随しているか」を検出する。
 # 各 rule: 変更ファイルが `when` glob にマッチしたら、`require_one_of` のいずれかにも
 # 変更ファイルがマッチしていなければ FAIL (未配線の疑い)。
@@ -27,7 +27,7 @@ fi
 
 base_ref_was_set=0
 [ -n "${BASE_REF:-}" ] && base_ref_was_set=1
-base="${BASE_REF:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@')}"
+base="${BASE_REF:-$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/@@' || true)}"
 [ -z "${base:-}" ] && base="origin/main"
 if git rev-parse --verify "$base" >/dev/null 2>&1; then
   committed="$(git diff --name-only --diff-filter=ACMRT "$base"...HEAD)"
