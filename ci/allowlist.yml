@@ -8,4 +8,9 @@
 #     owner: "@lihs-ie"
 #     reason: "protoc 生成コードに stub 命名が含まれるため"
 #     expires_at: "2026-09-30"
+#   - rule: orchestrator-direct-implementation
+#     path: "path/to/known-false-positive.ts"
+#     owner: "@lihs-ie"
+#     reason: "orchestrator-direct-implementation false positive の一時 escape 例 (Must-18)"
+#     expires_at: "2026-09-30"
 entries: []

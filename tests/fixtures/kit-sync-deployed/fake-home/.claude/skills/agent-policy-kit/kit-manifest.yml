@@ -1,0 +1,9 @@
+# fixture manifest for kit-sync-check.sh Must-4/Must-7 consumer-repo deployed-layout simulation.
+# Not the real kit-manifest.yml. template: carries the source-form executable_ prefix (as the real
+# manifest always does), but the deployed file on disk under this fake $HOME lacks the prefix
+# (chezmoi strips executable_ on deploy) — exercises Must-4(d) stripped-name resolution.
+kit_version: "9.9.9"
+files:
+  fixture-script.sh:
+    template: templates/scripts/executable_fixture-script.sh
+    sha256: "c618e0afe06e1d21a591cfba04c4f19c2871a16f972b4a8c4bdc270e0d003dca"

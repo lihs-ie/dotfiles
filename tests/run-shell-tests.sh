@@ -142,13 +142,61 @@ run_test "kit-sync-check --check missing (vendored file absent)" \
   "bash scripts/kit-sync-check.sh --check --manifest tests/fixtures/kit-sync/manifest.yml --target-dir tests/fixtures/kit-sync/target_missing" \
   1
 
-# P4 note: the P3 packet-split transient (kit-sync-check --self reporting STALE because
-# kit-manifest.yml predated the Must-5 hardening) is resolved by this packet's atomic
-# kit_version 1.1.0->1.2.0 bump (Must-7(b), kit-manifest-update.sh run once covering all 15
-# templates). Reverted to the original exit-0 assertion.
 run_test "kit-sync-check --self (real templates vs real kit-manifest.yml)" \
   "bash scripts/kit-sync-check.sh --self --manifest dot_claude/skills/agent-policy-kit/kit-manifest.yml" \
   0
+
+# --- kit-sync-check.sh: Must-4 manifest fallback chain + stripped-name resolution, Must-5(b) exit-1
+# non-silent message, Must-7 consumer-repo deployed-layout simulation
+# (docs/specs/harness-campaign-fix2-6.md P-B). Static fixture tree (no time dependency):
+# tests/fixtures/kit-sync-deployed/fake-home/.claude/skills/agent-policy-kit/ (deployed layout,
+# executable_ prefix stripped from the template file on disk, manifest's template: field keeps the
+# source-form executable_ prefix as the real manifest always does).
+KIT_SYNC_DEPLOYED_FAKE_HOME="$REPO_ROOT/tests/fixtures/kit-sync-deployed/fake-home"
+KIT_SYNC_DEPLOYED_MANIFEST="$KIT_SYNC_DEPLOYED_FAKE_HOME/.claude/skills/agent-policy-kit/kit-manifest.yml"
+KIT_SYNC_DEPLOYED_VENDORED="$REPO_ROOT/tests/fixtures/kit-sync-deployed/vendored"
+
+run_test "kit-sync-check --check consumer-repo deployed layout (Must-7) -> exit 0" \
+  "HOME=$KIT_SYNC_DEPLOYED_FAKE_HOME bash scripts/kit-sync-check.sh --check --manifest $KIT_SYNC_DEPLOYED_MANIFEST --target-dir $KIT_SYNC_DEPLOYED_VENDORED" \
+  0
+
+run_test "kit-sync-check --self consumer-repo deployed layout stripped-name resolution (Must-4(d)) -> exit 0" \
+  "HOME=$KIT_SYNC_DEPLOYED_FAKE_HOME bash scripts/kit-sync-check.sh --self --manifest $KIT_SYNC_DEPLOYED_MANIFEST" \
+  0
+
+# Must-4(b)/(c): manifest fallback chain WITHOUT an explicit --manifest flag. cwd is a scratch dir
+# without dot_claude/ (consumer repo, simulated via CLAUDE_PROJECT_DIR override — no git repo needed
+# since kit-sync-check.sh performs no git operations itself), HOME points at the deployed-layout
+# fixture -> resolves via the $HOME fallback (c) and succeeds via stripped-name resolution (d).
+kit_sync_consumer_repo="$(mktemp -d)"
+kit_sync_fallback_exit=0
+kit_sync_fallback_output="$(cd "$kit_sync_consumer_repo" && CLAUDE_PROJECT_DIR="$kit_sync_consumer_repo" HOME="$KIT_SYNC_DEPLOYED_FAKE_HOME" bash "$REPO_ROOT/scripts/kit-sync-check.sh" --self 2>&1 1>/dev/null)" || kit_sync_fallback_exit=$?
+if [ "$kit_sync_fallback_exit" -eq 0 ]; then
+  echo "PASSED: kit-sync-check manifest fallback chain (Must-4(b)/(c), no explicit --manifest, cwd without dot_claude/) -> resolves via \$HOME deployed layout, exit 0"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: kit-sync-check manifest fallback chain (Must-4(b)/(c), no explicit --manifest, cwd without dot_claude/) -> resolves via \$HOME deployed layout, exit 0 (exit=$kit_sync_fallback_exit, out=$kit_sync_fallback_output)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$kit_sync_consumer_repo"
+
+# Must-5(b): manifest missing via every fallback path (no repo-relative, no $HOME deployed, no
+# explicit --manifest) -> exit 1, and the message must name the fallback paths tried (not silent —
+# distinguishes from a plain "not found: <default path>" message).
+kit_sync_no_manifest_home="$(mktemp -d)"
+kit_sync_no_manifest_repo="$(mktemp -d)"
+kit_sync_no_manifest_exit=0
+kit_sync_no_manifest_output="$(cd "$kit_sync_no_manifest_repo" && CLAUDE_PROJECT_DIR="$kit_sync_no_manifest_repo" HOME="$kit_sync_no_manifest_home" bash "$REPO_ROOT/scripts/kit-sync-check.sh" --self 2>&1 1>/dev/null)" || kit_sync_no_manifest_exit=$?
+if [ "$kit_sync_no_manifest_exit" -eq 1 ] \
+  && printf '%s' "$kit_sync_no_manifest_output" | grep -qi "repo-relative" \
+  && printf '%s' "$kit_sync_no_manifest_output" | grep -qi "deployed"; then
+  echo "PASSED: kit-sync-check manifest missing via all fallback paths (Must-5(b)) -> exit 1 with non-silent message naming both paths tried"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: kit-sync-check manifest missing via all fallback paths (Must-5(b)) -> exit 1 with non-silent message naming both paths tried (exit=$kit_sync_no_manifest_exit, out=$kit_sync_no_manifest_output)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$kit_sync_no_manifest_home" "$kit_sync_no_manifest_repo"
 
 # evidence-stamp.sh: output schema (git_sha / dirty_diff_hash keys, string types)
 stamp_output="$(bash scripts/evidence-stamp.sh 2>/dev/null || true)"
@@ -403,6 +451,190 @@ else
   fail_count=$((fail_count + 1))
 fi
 rm -rf "$must5c_evidence_dir" "$must5c_state_dir"
+
+# --- agent-time-budget.sh: Must-1 resume-grant lifecycle (docs/specs/harness-campaign-fix2-6.md,
+# P-A) — budget-resume grant 機構。pending 発行 / 承認後の1回のみresume / 消費後の再利用拒否 /
+# self-granting 順序検出。tests/fixtures/resume-grant/ ではなく scratch dir (mktemp -d) を使う
+# (Must-5 の既存パターンを踏襲、時刻依存 fixture のためコミット不可)。
+find_grant_file() {
+  # $1=state_dir  $2=task  $3=suffix (pending/approved/consumed) -> 発見した絶対パスを1行出力
+  find "$1" -type f -name "$2.resume-grant.$3" 2>/dev/null | head -1
+}
+
+# resume-grant (1): Must-1(a) — PreToolUse deny (ratio>=1.0) 発火時に <task>.resume-grant.pending
+# が hook-private state に書かれる。
+rg1_evidence_dir="$(mktemp -d)"
+rg1_state_dir="$(mktemp -d)"
+write_active_marker "$rg1_evidence_dir" "resume-grant-fixture-pending" 6000 "heavy"   # 100min/90min ~=111% (deny帯)
+rg1_exit=0
+echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{}}' \
+  | bash scripts/agent-time-budget.sh --evidence-dir "$rg1_evidence_dir" --state-dir "$rg1_state_dir" >/dev/null 2>&1 || rg1_exit=$?
+rg1_pending_file="$(find_grant_file "$rg1_state_dir" "resume-grant-fixture-pending" "pending")"
+if [ "$rg1_exit" -eq 2 ] && [ -n "$rg1_pending_file" ] && [ -f "$rg1_pending_file" ]; then
+  echo "PASSED: agent-time-budget resume-grant (1) Must-1(a) deny帯で resume-grant.pending が hook-private state に作成される"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: agent-time-budget resume-grant (1) Must-1(a) deny帯で resume-grant.pending が hook-private state に作成される (exit=$rg1_exit, pending_file=[$rg1_pending_file])"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$rg1_evidence_dir" "$rg1_state_dir"
+
+# resume-grant (2): Must-1(c) — 正当な承認順序 (approved の mtime が re-stamp の mtime より前) の場合
+# のみ、private コピーの started_at を 1 回だけ resume し、適用と同時に approved を消費する
+# (single-use)。mtime は touch -t で明示固定し、フレーキーな実時刻レースを避ける。
+rg2_evidence_dir="$(mktemp -d)"
+rg2_state_dir="$(mktemp -d)"
+rg2_task="resume-grant-fixture-legit"
+write_active_marker "$rg2_evidence_dir" "$rg2_task" 6000 "heavy"   # 100min/90min ~=111% (deny帯)
+echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{}}' \
+  | bash scripts/agent-time-budget.sh --evidence-dir "$rg2_evidence_dir" --state-dir "$rg2_state_dir" >/dev/null 2>&1 || true
+rg2_pending_file="$(find_grant_file "$rg2_state_dir" "$rg2_task" "pending")"
+rg2_approved_file="${rg2_pending_file%.pending}.approved"
+mv "$rg2_pending_file" "$rg2_approved_file"   # 人間承認を模す (rename)
+touch -t 202501010000.00 "$rg2_approved_file"   # 承認時刻 T1 (明示固定)
+# 人間承認後、orchestrator/agent が .active started_at を fresh (allow帯) に再スタンプする。
+write_active_marker "$rg2_evidence_dir" "$rg2_task" 60 "heavy"   # 1min/90min ~=1.1% (allow帯)
+touch -t 202501020000.00 "$rg2_evidence_dir/.active"   # re-stamp 書込時刻 T2 (T2 > T1 = 正当な順序)
+rg2_exit=0
+echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{}}' \
+  | bash scripts/agent-time-budget.sh --evidence-dir "$rg2_evidence_dir" --state-dir "$rg2_state_dir" >/dev/null 2>&1 || rg2_exit=$?
+rg2_approved_still_present="no"; [ -f "$rg2_approved_file" ] && rg2_approved_still_present="yes"
+if [ "$rg2_exit" -eq 0 ] && [ "$rg2_approved_still_present" = "no" ]; then
+  echo "PASSED: agent-time-budget resume-grant (2) Must-1(c) 正当な承認順序 (approved mtime < re-stamp mtime) -> 1回のみresume許可 + grant消費"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: agent-time-budget resume-grant (2) Must-1(c) 正当な承認順序 (approved mtime < re-stamp mtime) -> 1回のみresume許可 + grant消費 (exit=$rg2_exit, approved_still_present=$rg2_approved_still_present)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$rg2_evidence_dir" "$rg2_state_dir"
+
+# resume-grant (2b): Must-1(b)/(c) — 承認経路が rename ではなく **copy** (`cp`) だった場合、元の
+# .pending が consume 後も残置されない (P-E: 2026-07-05 のこの campaign 自身の live resume-grant
+# 使用で cp 経路の残置が実際に確認された latent gap の回帰防止)。
+rg2b_evidence_dir="$(mktemp -d)"
+rg2b_state_dir="$(mktemp -d)"
+rg2b_task="resume-grant-fixture-legit-cp"
+write_active_marker "$rg2b_evidence_dir" "$rg2b_task" 6000 "heavy"
+echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{}}' \
+  | bash scripts/agent-time-budget.sh --evidence-dir "$rg2b_evidence_dir" --state-dir "$rg2b_state_dir" >/dev/null 2>&1 || true
+rg2b_pending_file="$(find_grant_file "$rg2b_state_dir" "$rg2b_task" "pending")"
+rg2b_approved_file="${rg2b_pending_file%.pending}.approved"
+cp "$rg2b_pending_file" "$rg2b_approved_file"   # 人間承認を模す (copy — rename ではない)
+touch -t 202501010000.00 "$rg2b_approved_file"
+write_active_marker "$rg2b_evidence_dir" "$rg2b_task" 60 "heavy"
+touch -t 202501020000.00 "$rg2b_evidence_dir/.active"
+rg2b_exit=0
+echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{}}' \
+  | bash scripts/agent-time-budget.sh --evidence-dir "$rg2b_evidence_dir" --state-dir "$rg2b_state_dir" >/dev/null 2>&1 || rg2b_exit=$?
+rg2b_approved_gone="no"; [ ! -f "$rg2b_approved_file" ] && rg2b_approved_gone="yes"
+rg2b_pending_gone="no"; [ ! -f "$rg2b_pending_file" ] && rg2b_pending_gone="yes"
+if [ "$rg2b_exit" -eq 0 ] && [ "$rg2b_approved_gone" = "yes" ] && [ "$rg2b_pending_gone" = "yes" ]; then
+  echo "PASSED: agent-time-budget resume-grant (2b) Must-1(b)/(c) cp承認経路でもconsume時にpendingが残置されない (P-E cleanup)"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: agent-time-budget resume-grant (2b) Must-1(b)/(c) cp承認経路でもconsume時にpendingが残置されない (P-E cleanup) (exit=$rg2b_exit, approved_gone=$rg2b_approved_gone, pending_gone=$rg2b_pending_gone)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$rg2b_evidence_dir" "$rg2b_state_dir"
+
+# resume-grant (3): Must-1(d) — self-granting 順序検出。approved の mtime が re-stamp (.active 書込)
+# の mtime **以降** (後付け) の場合は tamper 同様に拒否する。
+rg3_evidence_dir="$(mktemp -d)"
+rg3_state_dir="$(mktemp -d)"
+rg3_task="resume-grant-fixture-selfgrant"
+rg3_repo_key="$(printf '%s' "$REPO_ROOT" | sed -e 's#^/##' -e 's#/#_#g')"
+rg3_private_dir="$rg3_state_dir/$rg3_repo_key"
+mkdir -p "$rg3_private_dir"
+rg3_deny_started_at="$(iso8601_seconds_ago 6000)"   # 100min/90min ~=111% (deny帯, private側)
+printf '{"task": "%s", "started_at": "%s", "lane": "heavy"}\n' "$rg3_task" "$rg3_deny_started_at" > "$rg3_private_dir/$rg3_task.json"
+# .active に fresh (allow帯) started_at を書き、mtime を T1 (先) に固定する -> 「re-stamp が先に起きた」。
+write_active_marker "$rg3_evidence_dir" "$rg3_task" 60 "heavy"
+touch -t 202501010000.00 "$rg3_evidence_dir/.active"
+# approved grant を re-stamp より後 (T2 > T1) に「後付け」で作成する -> self-granting の疑い。
+printf '{"task": "%s", "private_started_at": "%s", "lane": "heavy", "requested_at": "2025-01-01T00:00:00Z"}\n' \
+  "$rg3_task" "$rg3_deny_started_at" > "$rg3_private_dir/$rg3_task.resume-grant.approved"
+touch -t 202501020000.00 "$rg3_private_dir/$rg3_task.resume-grant.approved"
+rg3_exit=0
+rg3_output="$(echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{}}' \
+  | bash scripts/agent-time-budget.sh --evidence-dir "$rg3_evidence_dir" --state-dir "$rg3_state_dir" 2>&1 1>/dev/null)" || rg3_exit=$?
+if [ "$rg3_exit" -eq 2 ] && printf '%s' "$rg3_output" | grep -Eiq 'self-grant|後付け'; then
+  echo "PASSED: agent-time-budget resume-grant (3) Must-1(d) self-granting 順序検出 (approved mtime >= re-stamp mtime) -> 拒否"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: agent-time-budget resume-grant (3) Must-1(d) self-granting 順序検出 (approved mtime >= re-stamp mtime) -> 拒否 (exit=$rg3_exit, out=$rg3_output)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$rg3_evidence_dir" "$rg3_state_dir"
+
+# resume-grant (4): Must-1(c) 消費済み — 一度 consume された grant は再利用できない。approved が
+# 存在しない (=既に消費済み) 状態で再度 .active が書き換えられても、grant 不在のため既存の
+# tamper 判定 (Must-5(c)) に戻り deny する (single-use の帰結)。
+rg4_evidence_dir="$(mktemp -d)"
+rg4_state_dir="$(mktemp -d)"
+rg4_task="resume-grant-fixture-reuse-rejected"
+rg4_repo_key="$(printf '%s' "$REPO_ROOT" | sed -e 's#^/##' -e 's#/#_#g')"
+rg4_private_dir="$rg4_state_dir/$rg4_repo_key"
+mkdir -p "$rg4_private_dir"
+rg4_deny_started_at="$(iso8601_seconds_ago 6000)"   # 100min/90min ~=111% (deny帯, private側)
+printf '{"task": "%s", "started_at": "%s", "lane": "heavy"}\n' "$rg4_task" "$rg4_deny_started_at" > "$rg4_private_dir/$rg4_task.json"
+# grant は既に消費済み (approved ファイル無し)。.active だけが別の値に書き換えられている状態を装う。
+write_active_marker "$rg4_evidence_dir" "$rg4_task" 60 "heavy"
+rg4_exit=0
+rg4_output="$(echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{}}' \
+  | bash scripts/agent-time-budget.sh --evidence-dir "$rg4_evidence_dir" --state-dir "$rg4_state_dir" 2>&1 1>/dev/null)" || rg4_exit=$?
+if [ "$rg4_exit" -eq 2 ] && printf '%s' "$rg4_output" | grep -Eiq 're-stamp|再スタンプ'; then
+  echo "PASSED: agent-time-budget resume-grant (4) Must-1(c) 消費済みgrant再利用試行 -> grant不在のためtamper判定に戻りexit 2"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: agent-time-budget resume-grant (4) Must-1(c) 消費済みgrant再利用試行 -> grant不在のためtamper判定に戻りexit 2 (exit=$rg4_exit, out=$rg4_output)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$rg4_evidence_dir" "$rg4_state_dir"
+
+# --- Must-2 (dot_claude/skills/proven-done/SKILL.md stall 検出プロトコル, harness-campaign-fix2-6
+# P-A) 定義相当のテスト — SKILL.md はプロトコルの正本 (doc-only entrypoint, 実行可能スクリプトを
+# 持たない) であるため、Step 2.7 と同じ「自己申告を信用せず ls で確認する」stall 判定ロジック自体を
+# fixture で模倣し健全性を確認する。stall の定義 (Must-2(a)(i)): 完了報告の tool-call 証跡 (commands
+# ログ) に Write/Edit/Bash がゼロ、かつ orchestrator の ls 実在確認でも新規ファイルが無い。
+detect_stall() {
+  # $1 = subagent の commands.txt (tool-call 証跡の自己申告)  $2 = orchestrator ls 実測ディレクトリ
+  # exit 1 = stall / exit 0 = not stall
+  local commands_log="$1" probe_dir="$2"
+  local has_tool_evidence=0
+  if [ -s "$commands_log" ] && grep -qiE 'Write|Edit|Bash' "$commands_log"; then
+    has_tool_evidence=1
+  fi
+  local ls_has_new_files=0
+  if [ -n "$(find "$probe_dir" -type f 2>/dev/null)" ]; then
+    ls_has_new_files=1
+  fi
+  if [ "$has_tool_evidence" -eq 0 ] && [ "$ls_has_new_files" -eq 0 ]; then
+    return 1   # stall: 証跡ゼロ かつ ls 実在確認でも新規ファイル無し
+  fi
+  return 0   # not stall
+}
+
+stall_fixture_dir="$(mktemp -d)"
+mkdir -p "$stall_fixture_dir/empty-probe"
+: > "$stall_fixture_dir/commands-empty.txt"   # 自己申告のみ、tool-call 証跡ゼロ
+if ! detect_stall "$stall_fixture_dir/commands-empty.txt" "$stall_fixture_dir/empty-probe"; then
+  echo "PASSED: stall detection (Must-2) 証跡ゼロ + ls 新規ファイル無し -> stall と判定"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: stall detection (Must-2) 証跡ゼロ + ls 新規ファイル無し -> stall と判定"
+  fail_count=$((fail_count + 1))
+fi
+
+mkdir -p "$stall_fixture_dir/nonempty-probe"
+echo "actual file written" > "$stall_fixture_dir/nonempty-probe/output.txt"
+if detect_stall "$stall_fixture_dir/commands-empty.txt" "$stall_fixture_dir/nonempty-probe"; then
+  echo "PASSED: stall detection (Must-2) 証跡ゼロでも ls で新規ファイル実在確認 -> stall ではない"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: stall detection (Must-2) 証跡ゼロでも ls で新規ファイル実在確認 -> stall ではない"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$stall_fixture_dir"
 
 # --- verify-wiring.sh: long-lived branch blind-spot (BASE_REF 未設定は committed ∪ working-tree
 # を常に union する。BASE_REF 明示時は committed のみの現行意味論を完全維持) ---
@@ -788,6 +1020,148 @@ else
   fail_count=$((fail_count + 1))
 fi
 rm -rf "$stash_c_repo"
+
+# --- agent-policy-hook.sh: Must-18 orchestrator-direct-implementation (PreToolUse blocking) +
+# first-ever regression cases for the pre-existing PostToolUse no-prod-doubles/test-bypass checks
+# (docs/specs/harness-campaign-fix2-6.md P-C, Warning 6: this script had zero tests before). ---
+APH_SCRIPT="scripts/agent-policy-hook.sh"
+aph_evidence_dir="$(mktemp -d)"
+{
+  echo "task=aph-fixture"
+  echo "started_at=2026-01-01T00:00:00Z"
+  echo "lane=heavy"
+} > "$aph_evidence_dir/.active"
+aph_prod_dir="$(mktemp -d)"
+echo "console.log('prod file')" > "$aph_prod_dir/prodfile.ts"
+mkdir -p "$aph_prod_dir/tests"
+echo "console.log('test file')" > "$aph_prod_dir/tests/foo.ts"
+
+aph_block_exit=0
+aph_block_output="$(env -u CLAUDE_CODE_CHILD_SESSION bash -c "echo '{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$aph_prod_dir/prodfile.ts\"}}' | EVIDENCE_DIR_OVERRIDE='$aph_evidence_dir' bash $APH_SCRIPT" 2>&1 1>/dev/null)" || aph_block_exit=$?
+if [ "$aph_block_exit" -eq 2 ] && printf '%s' "$aph_block_output" | grep -qi "orchestrator-direct-implementation"; then
+  echo "PASSED: agent-policy-hook Must-18 orchestrator-direct-implementation (no child session, prod path, .active present) -> exit 2"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: agent-policy-hook Must-18 orchestrator-direct-implementation (no child session, prod path, .active present) -> exit 2 (exit=$aph_block_exit, out=$aph_block_output)"
+  fail_count=$((fail_count + 1))
+fi
+
+run_test "agent-policy-hook Must-18 subagent (CLAUDE_CODE_CHILD_SESSION=1) -> allow" \
+  "CLAUDE_CODE_CHILD_SESSION=1 bash -c \"echo '{\\\"hook_event_name\\\":\\\"PreToolUse\\\",\\\"tool_name\\\":\\\"Write\\\",\\\"tool_input\\\":{\\\"file_path\\\":\\\"$aph_prod_dir/prodfile.ts\\\"}}' | EVIDENCE_DIR_OVERRIDE='$aph_evidence_dir' bash $APH_SCRIPT\"" \
+  0
+
+run_test "agent-policy-hook Must-18 no .active -> allow" \
+  "env -u CLAUDE_CODE_CHILD_SESSION bash -c \"echo '{\\\"hook_event_name\\\":\\\"PreToolUse\\\",\\\"tool_name\\\":\\\"Write\\\",\\\"tool_input\\\":{\\\"file_path\\\":\\\"$aph_prod_dir/prodfile.ts\\\"}}' | EVIDENCE_DIR_OVERRIDE='$(mktemp -d)' bash $APH_SCRIPT\"" \
+  0
+
+run_test "agent-policy-hook Must-18 test-dir path -> allow" \
+  "env -u CLAUDE_CODE_CHILD_SESSION bash -c \"echo '{\\\"hook_event_name\\\":\\\"PreToolUse\\\",\\\"tool_name\\\":\\\"Write\\\",\\\"tool_input\\\":{\\\"file_path\\\":\\\"$aph_prod_dir/tests/foo.ts\\\"}}' | EVIDENCE_DIR_OVERRIDE='$aph_evidence_dir' bash $APH_SCRIPT\"" \
+  0
+
+# Must-18 allowlist escape: ci/allowlist.yml contains a matching rule comment/entry -> allow even
+# though the other conditions (no child session, prod path, .active present) would otherwise block.
+aph_allowlist_dir="$(mktemp -d)"
+mkdir -p "$aph_allowlist_dir/ci"
+cat > "$aph_allowlist_dir/ci/allowlist.yml" <<'YAML'
+entries:
+  - rule: orchestrator-direct-implementation
+    path: "prodfile.ts"
+    owner: "@test"
+    reason: "fixture waiver for test"
+    expires_at: "2099-01-01"
+YAML
+cp -r "$aph_prod_dir"/* "$aph_allowlist_dir/" 2>/dev/null
+run_test "agent-policy-hook Must-18 ci/allowlist.yml waiver present -> allow" \
+  "env -u CLAUDE_CODE_CHILD_SESSION bash -c \"cd '$aph_allowlist_dir' && echo '{\\\"hook_event_name\\\":\\\"PreToolUse\\\",\\\"tool_name\\\":\\\"Write\\\",\\\"tool_input\\\":{\\\"file_path\\\":\\\"$aph_allowlist_dir/prodfile.ts\\\"}}' | CLAUDE_PROJECT_DIR='$aph_allowlist_dir' EVIDENCE_DIR_OVERRIDE='$aph_evidence_dir' bash '$REPO_ROOT/$APH_SCRIPT'\"" \
+  0
+
+# Regression (Warning 6: this script had zero tests before P-C): pre-existing PostToolUse
+# no-prod-doubles / test-bypass behavior is unaffected by the new PreToolUse branch.
+aph_bad_dir="$(mktemp -d)"
+echo "jest.mock('./userService');" > "$aph_bad_dir/service.ts"
+run_test "agent-policy-hook PostToolUse regression: prod-double pattern in non-test file -> exit 2" \
+  "echo '{\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$aph_bad_dir/service.ts\"}}' | bash $APH_SCRIPT" \
+  2
+
+aph_clean_dir="$(mktemp -d)"
+echo 'export function add(a: number, b: number) { return a + b; }' > "$aph_clean_dir/math.ts"
+run_test "agent-policy-hook PostToolUse regression: clean file -> exit 0" \
+  "echo '{\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$aph_clean_dir/math.ts\"}}' | bash $APH_SCRIPT" \
+  0
+
+rm -rf "$aph_evidence_dir" "$aph_prod_dir" "$aph_allowlist_dir" "$aph_bad_dir" "$aph_clean_dir"
+
+# --- scripts/portable.sh: Must-19/22 portable_timeout + portable_http_probe (primary path +
+# forced-fallback path each). docs/specs/harness-campaign-fix2-6.md P-D. ---
+PORTABLE_SCRIPT="$REPO_ROOT/scripts/portable.sh"
+# resolve the REAL python3 binary (not a pyenv/asdf shim script, which may itself depend on
+# grep/sed/tr being on PATH) so the PATH-restricted fallback subshell can actually execute it.
+real_python3="$(python3 -c 'import sys; print(sys.executable)' 2>/dev/null)"
+[ -x "$real_python3" ] || real_python3="$(command -v python3)"
+real_bash="$(command -v bash)"
+real_perl="$(command -v perl)"
+real_sleep="$(command -v sleep)"
+
+# portable_timeout (1): primary path (gtimeout/timeout available in normal PATH) actually bounds
+# a long-running command instead of waiting for it to finish.
+pt_primary_start="$(date +%s)"
+pt_primary_exit=0
+(source "$PORTABLE_SCRIPT"; portable_timeout 1 sleep 5) >/dev/null 2>&1 || pt_primary_exit=$?
+pt_primary_elapsed=$(( $(date +%s) - pt_primary_start ))
+if [ "$pt_primary_exit" -ne 0 ] && [ "$pt_primary_elapsed" -le 3 ]; then
+  echo "PASSED: portable_timeout (1) primary path (gtimeout/timeout) bounds a long command (elapsed=${pt_primary_elapsed}s, exit=$pt_primary_exit)"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: portable_timeout (1) primary path (gtimeout/timeout) bounds a long command (elapsed=${pt_primary_elapsed}s, exit=$pt_primary_exit)"
+  fail_count=$((fail_count + 1))
+fi
+
+# portable_timeout (2): forced-fallback path — PATH restricted to only perl/sleep/bash (no
+# gtimeout/timeout) — perl alarm() fallback still bounds the command.
+pt_fallback_dir="$(mktemp -d)"
+ln -s "$real_perl" "$pt_fallback_dir/perl"
+ln -s "$real_sleep" "$pt_fallback_dir/sleep"
+ln -s "$real_bash" "$pt_fallback_dir/bash"
+pt_fallback_start="$(date +%s)"
+pt_fallback_exit=0
+PATH="$pt_fallback_dir" "$real_bash" -c "source '$PORTABLE_SCRIPT'; portable_timeout 1 sleep 5" >/dev/null 2>&1 || pt_fallback_exit=$?
+pt_fallback_elapsed=$(( $(date +%s) - pt_fallback_start ))
+if [ "$pt_fallback_exit" -ne 0 ] && [ "$pt_fallback_elapsed" -le 3 ]; then
+  echo "PASSED: portable_timeout (2) forced-fallback path (perl alarm, no gtimeout/timeout on PATH) bounds a long command (elapsed=${pt_fallback_elapsed}s, exit=$pt_fallback_exit)"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: portable_timeout (2) forced-fallback path (perl alarm, no gtimeout/timeout on PATH) bounds a long command (elapsed=${pt_fallback_elapsed}s, exit=$pt_fallback_exit)"
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$pt_fallback_dir"
+
+# portable_http_probe fixture server (real python3, not a shim, so it survives PATH restriction below)
+php_test_dir="$(mktemp -d)"
+echo "portable_http_probe fixture" > "$php_test_dir/index.html"
+php_port=18391
+(cd "$php_test_dir" && "$real_python3" -m http.server "$php_port" >/dev/null 2>&1 &)
+php_server_pid_pattern="http.server $php_port"
+sleep 1
+
+# portable_http_probe (1): primary path (curl available)
+run_test "portable_http_probe (1) primary path (curl) -> 200 matches" \
+  "(source $PORTABLE_SCRIPT; portable_http_probe http://127.0.0.1:$php_port/index.html 200)" \
+  0
+
+run_test "portable_http_probe (1b) primary path (curl) -> mismatch expected status -> non-zero" \
+  "(source $PORTABLE_SCRIPT; portable_http_probe http://127.0.0.1:$php_port/index.html 404)" \
+  1
+
+# portable_http_probe (2): forced-fallback path — PATH restricted to only the REAL python3 binary
+# (no curl/wget) — python3 urllib fallback still probes correctly.
+php_fallback_dir="$(mktemp -d)"
+ln -s "$real_python3" "$php_fallback_dir/python3"
+ln -s "$real_bash" "$php_fallback_dir/bash"
+run_test "portable_http_probe (2) forced-fallback path (python3 urllib, no curl/wget on PATH) -> 200 matches" \
+  "PATH='$php_fallback_dir' $real_bash -c \"source '$PORTABLE_SCRIPT'; portable_http_probe http://127.0.0.1:$php_port/index.html 200\"" \
+  0
+rm -rf "$php_fallback_dir" "$php_test_dir"
+pkill -f "$php_server_pid_pattern" 2>/dev/null || true
 
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"

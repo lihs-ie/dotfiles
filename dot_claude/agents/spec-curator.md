@@ -59,3 +59,12 @@ model: sonnet
 `estimated_files` は裸の当て推量を禁止する — `basis` に実際に実行した Glob/Grep コマンド
 (または既存の類似実装ファイル一覧への参照) を書き、根拠のある見積りにすること
 (proven-done Step 2.5 が topology-mapper の impact-map.md 実測値でこの見積りを再判定する)。
+
+## lane-capability rule (受入条件は実行可能な lane を名指しする)
+
+受入条件のコマンドは **実行可能な lane を名指し**しなければならない。keychain / entitlement に
+依存する挙動 (シミュレータ/CLI からは検証不能) は、**app-hosted lane** (実機/実 app 起動を伴う lane)
+に割り当てることを受入条件自体に明記する。シミュレータや hostless なテスト環境で keychain/entitlement
+依存の挙動を検証しようとする受入条件を書いてはならない (2026-07-03 incident 相当:
+firebaseauth-hostless-test-keychain 障害 — recall-paper repo の消費側 incident であり本 dotfiles
+repo に incident ファイルは無いため、外部提供エビデンスとして引用する)。

@@ -22,6 +22,17 @@ tracked file や index を書き換えない)。一時ファイルは repo 外 (
 終了時に `bash scripts/evidence-stamp.sh` を実行し、両値を判定 JSON の `self_stamp_before` /
 `self_stamp_after` に記録する (両者の不一致 = 自分が検証対象ツリーを汚した証跡)。
 
+`completion-report.md` の `status: complete` は `round-<N>/done-eval.json` が存在して初めて正当となる。
+Step 8 以前 (Step 5/6/7 時点) に `complete` を要求してはならない。
+
+## portable helper の使用 (必須)
+
+smoke/probe 実行時は `scripts/portable.sh` を **source** して `portable_timeout` / `portable_http_probe`
+を使うこと。**裸の `timeout`/`curl` を直接呼ばない**。native-trace (~14 回) / alpha-mind
+(darwin sandbox に GNU coreutils が無い) で `timeout`/`curl` の command-not-found により probe が
+壊れた実測障害への対処 (`portable_timeout` は `gtimeout` → `timeout` → perl `alarm` fallback、
+`portable_http_probe` は `curl` → `wget` → `python3` の優先順で解決する)。
+
 ## 手順
 
 1. `scripts/verify-no-prod-doubles.sh`・`verify-test-bypass.sh`・`verify-wiring.sh`・`verify-no-stub-placeholder.sh`
