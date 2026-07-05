@@ -71,7 +71,7 @@ spec 受け取り後、以下の判定式でレーンを決める (proven-done S
 | レーン | 条件 | 対応 |
 |---|---|---|
 | **block** | `must_count > 8` OR `estimated_files > 30` OR (`high-risk` AND `boundary_touched=multi`) | 実装を開始せず即エスカレーション |
-| **light** | `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` | Step 2 へ通常進行 |
+| **light** | `low-risk` AND `must_count ≤ 3` AND `estimated_files ≤ 5` AND `boundary_touched=false` | topology-mapper/static-verifier/spec-grader を skip、runtime-verifier は entrypoint touch 時のみ |
 | **heavy** | それ以外 | Step 2 へ通常進行 (Time budget は heavy=90min) |
 
 - `boundary_touched=multi`: DI / routing / auth / config / migration / schema / public export / background job / event subscription のうち 2 つ以上を跨ぐ。
@@ -102,7 +102,7 @@ spec 受け取り後、以下の判定式でレーンを決める (proven-done S
   - **データフロー配線**: 新規シンボルが本番呼び出し箇所から実参照される。placeholder
     (`[]` / `Nothing` / `undefined` / `err501` / リテラル) を残さない。
 - spec の **Must を全て満たし、Non-goals を侵さない**。
-- `.agent-evidence/iterations.json` の `failure_class` が全て有効な 5 値 enum (`product` / `test-oracle` / `harness-env` / `flaky` / `wiring-integration`) であり、collapsed loop (末尾 3 ラウンド同一 class) が存在しない。
+- `.agent-evidence/iterations.json` の `failure_class` が全て有効な 5 値 enum (`product` / `test-oracle` / `harness-env` / `flaky` / `wiring-integration`) であり、collapsed loop (末尾 3 red ラウンドが同一 failure_class かつ同一 target_test — 詳細は §10) が存在しない。
 - 完了報告に **実行コマンド・生成 artifact・wiring map** が含まれる。
 
 ## 4. Evidence required (完了報告に必須の証跡)
@@ -135,8 +135,9 @@ spec 受け取り後、以下の判定式でレーンを決める (proven-done S
 - allowlist 外の本番パス mock/stub/fake/dummy/spy は無条件で却下する。
 - 指摘は **必ず具体的なコードパスまたは artifact に紐付ける** (抽象的懸念だけで pass/fail を出さない)。
 - 証跡が不十分なら PASS ではなく **FAIL ("missing evidence")** を返す。
-- レビューループは **2 周まで**。それでも FAIL が残る/同一指摘が 2 周連続 (collapsed loop) なら
-  人間にエスカレーションする (終わりのない AI 同士の往復はコンテキスト汚染とコスト増を招く)。
+- レビューループは **2 周まで**。それでも FAIL が残る/同一指摘が 2 周連続 (**review-loop stall** —
+  script が検出する exit-2 `collapsed loop` とは別概念) なら人間にエスカレーションする
+  (終わりのない AI 同士の往復はコンテキスト汚染とコスト増を招く)。
 - implementer が **同一 test / spec に対し 3 回連続 RED → fix → RED** した場合、orchestrator は
   spec-grader を DEEPEST_MODEL で再起動し、(a) test pyramid 層違反 (unit で表現できる挙動を E2E
   に置いていないか) (b) 環境非決定性 (timing/order/UserDefaults 汚染) (c) spec 自体の inconsistency
@@ -184,7 +185,7 @@ spec 受け取り後、以下の判定式でレーンを決める (proven-done S
 
 | 段 | 役割 | 目的 | 権限 | モデル (low / high-risk) |
 |---|---|---|---|---|
-| 仕様化 | **spec-curator** | grill-me 合意を Must/Should/受入/Non-goal + risk に正規化 → `docs/specs/` | Read, Search, Write(specs) | Sonnet / Opus |
+| 仕様化 | **spec-curator** | grill-me 合意を Must/Should/受入/Non-goal + risk に正規化 → `docs/specs/` | Read, Search, Write(specs) | Sonnet / (生成前のため適用不可 — 常に Sonnet) |
 | 影響調査 | **topology-mapper** | 入口→中継→出口の wire-map・call graph・配線点列挙 (旧 explorer 吸収) | Read-only | Sonnet |
 | 実装 | **implementer** | 最小 diff・wire-first・テスト更新・証跡作成 | Read, Write, Run | Sonnet |
 | 静的検証 | **static-verifier** | test double / bypass / allowlist / 証跡 / scope の機械検査 | Read-only | Sonnet |
@@ -255,6 +256,7 @@ implementer が TDD サイクルで使う試行ログ。`verify-failure-class.sh
 | `wiring-integration` | 配線・結線・DI・route 登録の欠落 |
 
 ### 自動エスカレーション条件
-- **collapsed loop** (末尾 3 ラウンド同一 class) → Step 6.5 oracle-change branch へ自動誘導。
+- **collapsed loop** (**末尾 3 red** ラウンドが同一 `failure_class` **かつ同一 `target_test`** —
+  green/refactor/pivot は窓に数えない) → Step 6.5 oracle-change branch へ自動誘導。
 - **flaky が 2 ラウンド以上** → `ci/quarantine.yml` への隔離エントリ追加を義務付け。
 - **context 窓 20% 以下** → Step 10 に強制ジャンプし `time-budget-exceeded.md` を残す。

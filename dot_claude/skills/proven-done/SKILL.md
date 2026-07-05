@@ -9,23 +9,36 @@ description: モック濫用と未配線完了報告を防ぐ三層ループの�
 (本番テストダブル混入 / 未配線完了報告) を防ぎながら **仕様化〜完了判定** まで駆動する三層ループの中心ループ。
 外側ループ (失敗事例の eval/rule 昇格) は `/self-improve` が担う。
 
+## Light lane fast path
+
+light レーンで実際に実行される Step を 1 画面で列挙する (Step 2/2.5 は heavy-only、Step 5/7 は light
+で skip — 下記除外規定から逆算せずに読めるようにするための一覧):
+
+**0 → 1 → 1.5 → 2.7 → 3 → 3.5 → 4 → [6 if entrypoint] → 8 → 9 → 10**
+
 ## 前提チェック (Step 0)
 
 (この Step の後半 (6.) で `.active` 作成と同時に stash-escape 検出用のベースライン記録も行う。)
 
 1. 引数 `<task>` を受け取る。無ければユーザーに 1 行で要求を尋ねる。
 2. リポジトリルート (`git rev-parse --show-toplevel`) を確認。
-3. このリポジトリに `AGENTS.md` と `wiring_manifest.yml` と、6 本の verify スクリプト
+3. このリポジトリに `AGENTS.md` と `wiring_manifest.yml` と、**7 本**の verify/sync スクリプト
    (`scripts/verify-no-prod-doubles.sh` `scripts/verify-test-bypass.sh` `scripts/verify-wiring.sh`
    `scripts/verify-no-stub-placeholder.sh` `scripts/verify-allowlist-expiry.sh`
-   `scripts/verify-failure-class.sh`) が**揃っているか**確認する。**いずれか欠落**なら「先に
+   `scripts/verify-failure-class.sh` `scripts/kit-sync-check.sh`) が**揃っているか**確認する
+   (`kit-sync-check.sh` は他 6 本と同格の **blocking** 必須スクリプトに昇格した — 3/4 消費 repo で
+   `kit-sync-check.sh` 欠落が放置された実測事故の再発防止)。**いずれか 1 本でも欠落**なら「先に
    `agent-policy-kit` skill でガードを scaffold してください」と案内し、ユーザー承認の上で
    agent-policy-kit を実行してから続行する。
-   揃っていれば `bash scripts/kit-sync-check.sh --check` で各スクリプトの `KIT_VERSION` が
-   kit の最新版 (`kit-manifest.yml`) と一致するか (freshness) を検査する。exit 2 (陳腐化) なら
+   7 本揃っていれば `bash scripts/kit-sync-check.sh --check` で各スクリプトの `KIT_VERSION` が
+   kit の最新版 (`kit-manifest.yml`) と一致するか (freshness) を検査する。**exit 0**: fresh、
+   そのまま続行。**exit 1**: manifest が Must-4 フォールバック全経路 (明示 `--manifest` >
+   repo-relative > `$HOME` deployed) を試しても見つからない稀なケース (7 本必須化により
+   `kit-sync-check.sh` 自体の不在は上記ブロッキングチェックで既に弾かれるため) — **警告**して
+   freshness 検査を skip し続行するが、**サイレントにはしない** (stderr を Step 10 の完了報告にも
+   残すこと)。**exit 2** (陳腐化 — KIT_VERSION 不一致 or 同一 KIT_VERSION での sha256 drift):
    **警告**して `agent-policy-kit` skill の Sync (Detect→Diff→Apply, dry-run 既定) 実行を促すが、
-   ブロックはせず続行する。`scripts/kit-sync-check.sh` 自体が無ければ freshness 検査を skip し、
-   その旨を警告する。
+   ブロックはせず続行する (現状維持)。
 4. **spec 前提**: `docs/specs/<feature>.md` が在るか確認する。**無ければ** Step 1 で先に仕様化する
    (`/grill-me` で人間と認識合わせ → spec-curator で正規化)。
 5. **既存成果物の退避 (Amendment A4)**: `.active` を書く前に、`.agent-evidence/` 直下に前タスクの
@@ -65,7 +78,7 @@ runtime-verifier / spec-grader / done-evaluator を **Opus** に昇格する。
 
 | 段 | subagent_type | 既定 model | high-risk 時 | 成果物 |
 |---|---|---|---|---|
-| 1 Spec | spec-curator | sonnet | opus | `docs/specs/<feature>.md` |
+| 1 Spec | spec-curator | sonnet | (生成前のため適用不可 — 常に Sonnet) | `docs/specs/<feature>.md` |
 | 2 Topology | topology-mapper | sonnet | sonnet | `.agent-evidence/impact-map.md` |
 | 3 Implement | implementer | sonnet | sonnet | code + `wiring-map.json`/`commands.txt`/`completion-report.md` (root) |
 | 4 Gate | (skill が直接 Bash 実行) | — | — | `.agent-evidence/round-<N>/verify-*.log` |
@@ -88,16 +101,8 @@ implementer は `.agent-evidence/iterations.json` に各試行ラウンドを追
 green / refactor は禁止・pivot は任意**。ここに複製は置かない (二重正本はドリフトの温床 —
 本 skill と implementer.md のスキーマが乖離した実績があるため参照に統一した)。
 
-`failure_class` enum (5 値):
-- `product` — 実装ロジックの誤り (仕様通りに実装できていない)
-- `test-oracle` — テスト自体が間違い / spec 不整合
-- `harness-env` — 環境・タイミング・非決定性 (flaky と区別: 再現性あり vs なし)
-- `flaky` — 非決定的失敗 (CI 環境の順序依存・timing race)
-- `wiring-integration` — 配線・結線・DI・route 登録の欠落
-
-`scripts/verify-failure-class.sh` の exit code:
-- exit 1 — スキーマ違反 (phase 欠落 / 未知 enum / green・refactor への failure_class 混入)
-- exit 2 — collapsed loop (**末尾 3 red** が同一 failure_class **かつ同一 target_test**)。エラーではなく Step 6.5 への routing シグナル
+`failure_class` enum (5 値) と `verify-failure-class.sh` の exit code の正本は
+**`implementer.md` §iterations.json** および **agent-policy.md §10** を参照 (ここに複製は置かない)。
 
 ### Step 1: Spec curation
 `docs/specs/<feature>.md` が無ければ、まず **`/grill-me`** で人間と決定木を解消し、
@@ -213,11 +218,20 @@ producer-before-consumer 順に 1 packet ずつ処理する):
     |---|---|---|---|
     | (既定・reason_code なし) | 上記いずれにも該当しない | `continue` | `SendMessage` で同一 implementer に次 packet + checkpoint findings を渡す |
     | `fail-x2` | 同一 `packet_id` の checkpoint `verdict` が **FAIL 2 回連続** | `fresh` | findings 付き packet contract を再発行して新規 implementer を起動する (新規起動前に旧 agent の生死確認を行う — 既存 Step 3.5 のルールを適用) |
-    | `agent-dead` | `SendMessage` エラー / 応答なし | `fresh` | 同上 (新規 implementer 起動) |
+    | `agent-dead` | 同一 `packet_id` で `SendMessage` エラー / 応答なしが **1 回目** | `fresh` | 同上 (新規 implementer 起動) |
     | `collapsed-loop` | checkpoint 時点の `verify-failure-class.sh` が exit 2 | `escalate` | **fresh ではなく** 既存 **Step 6.5 oracle-change branch** へ routing する |
     | `packet-over-budget` | packet 経過時間 > **`1.5 ×`** (レーン budget ÷ packet 数) | `escalate` | 残 packet の再分解提案、または `AskUserQuestion(...)` でユーザーにエスカレーション (fresh 継続はしない) |
+    | `stall-x2` | 同一 `packet_id` で **stall** (下記「Stall プロトコル」の定義) が **2 回連続** (`SendMessage` エラー/応答なしが同一 packet で **2 回連続目**の場合を含む) | `escalate` (`fresh` ではない — 3 回目の spawn をしないため) | `.agent-evidence/resume-packet.md` を書いて **STOP** し人間にエスカレーション |
 
-    **上記 4 つの `reason_code` 以外の理由での `fresh` 起動・`escalate` は禁止**である
+    **`agent-dead` と `stall-x2` の優先順位 (両者は `SendMessage` エラー/応答なしという同一トリガーを
+    共有するため明示する)**: 同一 `packet_id` で `SendMessage` エラー/応答なしが起きた場合、**1 回目は
+    `agent-dead`** (`fresh` — 新規 implementer を起動する) を適用する。その新規 implementer でも
+    **同一 packet_id で 2 回連続目**の `SendMessage` エラー/応答なしが起きたら、それはもはや
+    `agent-dead` ではなく **`stall-x2`** (`escalate`) であり、**3 回目の fresh 起動は行わない**
+    (E2 incident で 6 連続 stall が起きた反省 — `agent-dead`→`fresh` の無限反復を許さないための
+    唯一の停止条件)。
+
+    **上記 5 つの `reason_code` 以外の理由での `fresh` 起動・`escalate` は禁止**である
     (抽象裁量による fresh 起動・escalation の排除)。判定結果 (`checkpoint_verdict_history` /
     `continuation_decision` / `reason_code` / `reason_detail`) は orchestrator が
     `.agent-evidence/checkpoint-<packet_id>.json` に追記する (static-verifier.md の 2 段階書込を参照)。
@@ -239,6 +253,32 @@ producer-before-consumer 順に 1 packet ずつ処理する):
 `work-packets.json` が存在しない、または `decomposition_adopted: false` の場合は、この分岐を通らず
 従来通りの単発 Step 3 (上記) を実行する。
 
+### Stall プロトコル (subagent stall 検出 — 2 回連続で 3 回目の spawn をしない)
+
+E2 incident (6 連続 stall) の反省から、subagent の無応答・無証跡を構造的に止める。
+
+**stall の定義** (次のいずれか):
+(i) subagent (implementer 等) の完了報告に Write/Edit/Bash の tool call 証跡が **ゼロ**、かつ
+    orchestrator の `ls` 実在確認でも **新規ファイルが確認できない** (Step 2.7 の書込プローブと同じ
+    「自己申告を信用せず ls で確認する」原則を stall 判定にも適用する)。
+(ii) `SendMessage` がエラーを返す、または応答が一切無い。
+
+**2 回連続 stall で 3 回目の spawn をしない**: 同一 packet (`work-packets.json` 未採用時は同一 task の
+Step 3 試行) で stall が **2 回連続**発生したら、`.agent-evidence/resume-packet.md`
+(packet contract = 対象 `musts`/`target_files`/`done_when` + それまでの checkpoint findings) を書き、
+**STOP して人間にエスカレーション**する。3 回目の fresh 起動は行わない。
+
+`work-packets.json` 採用時は、上記の Step 3 packet ループ機械判定表の `reason_code` **`stall-x2`**
+(条件: 同一 `packet_id` で stall が 2 回連続、`continuation_decision`: `escalate`) がこの手順に対応する。
+**packet 未採用 (単発 Step 3) でも同じ stall 定義・2 回連続 STOP ルールを適用する**
+(E2 incident は heavy 単発想定でも起こりうるため、packet ループに限定しない)。
+
+上記 stall の定義 (ii) (`SendMessage` エラー/応答なし) は、機械判定表の `agent-dead` reason_code
+とトリガーを共有する。**優先順位は機械判定表の通り**: 同一 packet (または単発 Step 3 試行) の
+**1 回目は `agent-dead`** (`fresh` — 新規 implementer 起動)、**2 回連続目からがこの stall-x2 ルール**
+(`escalate`、3 回目の spawn はしない) — `agent-dead`→`fresh` を無限に繰り返さないための唯一の
+歯止めがこの 2 回連続カウントである。
+
 ### Step 3.5: Implementer 完了ガード (skill が直接確認 — 実測で必要と判明)
 実装者は **大規模タスクで整形/テストに budget を取られ、結線を残したまま早期終了する**ことがある
 (関数は実装したが呼び出し側の placeholder を置換し忘れる)。fitness hook も verify-wiring の
@@ -246,7 +286,10 @@ producer-before-consumer 順に 1 packet ずつ処理する):
 1. 実装者の報告が **途中終了**(「次に…する」で終わる)なら、未完を明示して **Step 3 へ差し戻す**(周回に数えない)。
 2. `bash scripts/verify-no-stub-placeholder.sh` で placeholder stub (`err501`/`notImplemented`/`todo!()` 等) の
    残置を検出 → 差し戻す。
-3. 各 `wired_at` が **実在の本番呼び出し**か grep で抜き取り確認する (定義/ export 宣言行ではない)。
+3. 各 `wired_at` が **実在の本番呼び出し**か (定義/export 宣言行ではないか) の確認は
+   **`runtime-verifier`** (Step 6、手順4: `wiring-map.json` の `wired_at` を Grep で裏取り) が担う —
+   orchestrator が自ら grep で代替確認しない (不変条件「orchestrator の手動 grep を当てにしない」と
+   の矛盾を解消)。
 4. **差し戻しは排他選択**: 「`SendMessage` による既存 implementer の再開」か「新規 implementer 起動」の
    **どちらか一方のみ**を選ぶ。新規起動の前に **旧 agent の継続作業有無 (生死) を必ず確認**する。
    並行 implementer は 2026-07-02 に premature-done レース (証跡が配線に先行) を起こした実証済み事故原因 —
@@ -280,7 +323,19 @@ bash tests/run-shell-tests.sh                > .agent-evidence/round-<N>/run-she
 > 検出したら (前後 stamp 不一致、または verdict JSON の `self_stamp_before`≠`self_stamp_after`)
 > 該当 verdict を**無効化して差し戻す** (verifier は read-only であるべきで、2026-07-02 に
 > static-verifier が `git checkout` で未コミット差分を破棄した実証事故がある — 詳細は
-> `incidents/2026-07-02-verifier-tree-mutation.md`)。
+> `incidents/2026-07-02-verifier-tree-mutation.md`)。**orchestrator も、いずれかの verifier が
+> 走行中は tree・evidence を変異させない** (2026-07-05 dogfood Finding 2: orchestrator が
+> static-verifier 並走中に `completion-report.md` の status header を sed で書き換え、
+> static-verifier が 3-byte 差分の race を検出した実証事故 —
+> `incidents/2026-07-05-guard-evasion-dogfood-findings.md`。tree_stamp が `.agent-evidence/` を
+> 含まないため既存 stamp 比較ではこの race を検出できない盲点であることに注意する)。
+>
+> **Step 5〜7 (static-verifier / runtime-verifier / spec-grader) は read-only かつ各々の起動前後で
+> tree_stamp が一致する限り並列起動してよい**。work-packets.json 採用時、**最終 packet** (他 packet
+> から depends_on 参照されない末尾 packet) の checkpoint (static-verifier checkpoint モード) は、
+> 直後に Step 3(d) のフル battery (Step 4〜8) が上位互換で走ることを理由に **省略してよい** (必須では
+> ない — 省略する場合は `commands.txt` に「checkpoint-<packet_id> folded into full battery」と明記
+> する)。
 
 ### Step 5: Static verify
 `static-verifier` を起動し、test double / bypass / placeholder / allowlist / 証跡 / scope を機械検査、
@@ -336,7 +391,8 @@ Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
    Step 3〜8 をやり直す (これで 1 周)。(`work-packets.json` 採用時は Step 3 packet ループ分岐の (e) に
    従い、blocking findings に対応する Must を含む packet のみを再オープンする — task 全体はやり直さない)
 2. **2 周終えても残る**、または `done-eval.json.escalate_to_human=true`、または同一指摘が 2 周連続
-   (collapsed loop) なら **人間にエスカレーション**: 未解決の blocking findings と artifact パスを提示して停止する。
+   (**review-loop stall** — script が検出する exit-2 `collapsed loop` とは別概念) なら
+   **人間にエスカレーション**: 未解決の blocking findings と artifact パスを提示して停止する。
 3. done-evaluator が `done` → 成功。
 
 **Time budget 強制** (context 枯渇防止):
@@ -365,7 +421,8 @@ context 20% 閾値を下回る前に警告を出し、ユーザーに続行 or �
 - 実装者の早期終了 (結線が後手順のまま中断) を Step 3.5 で検出し差し戻す。orchestrator の手動 grep を当てにしない。
 - reviewer の指摘は必ずコードパス/artifact/Must 番号に紐付ける。抽象的懸念だけで pass/fail しない。
 - 本番パスの test double / test-bypass は allowlist 以外は無条件で差し戻す。
-- `iterations.json` の `failure_class` は 5 値 enum のみ。未知 class は verify-failure-class.sh が exit 1 で検出する。
-- collapsed loop (末尾 3 **red** ラウンド同一 failure_class **かつ同一 target_test** — green/refactor/pivot は窓に数えない) は Step 6.5 oracle-change branch に自動誘導する。verify-failure-class.sh が exit 2 で検出する。
+- `failure_class` enum・collapsed loop (exit-2 シグナル) の定義・exit code の正本は
+  **`implementer.md` §iterations.json** および **agent-policy.md §10** を参照 (ここに複製しない)。
+  collapsed loop は Step 6.5 oracle-change branch に自動誘導する。
 - context 窓 20% 以下で Step 10 に強制ジャンプし `time-budget-exceeded.md` を残す。翌セッションで再開可能にする。
 - フレーキーテスト (`failure_class=flaky`) を 2 回以上検出したら `ci/quarantine.yml` への隔離エントリ追加を implementer に義務付ける。

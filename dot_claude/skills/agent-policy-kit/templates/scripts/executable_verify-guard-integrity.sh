@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.2.0
+# KIT_VERSION: 1.3.0
 # agent-policy: proven-done の完了主張が実際に迂回された経路のうち spec-amend (無断での spec 書換) と
 # stash-escape (git stash によるタスク対象ファイルの隠蔽) を決定論的に検出する
 # (docs/specs/guard-evasion-gates.md Must-2/Must-3/Must-4)。`.active` tamper 検出 (Must-5) は別スクリプト

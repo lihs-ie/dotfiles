@@ -18,6 +18,9 @@ Your job is not to restate the diff. Your job is to prove or disprove that the c
 `bash scripts/evidence-stamp.sh` を実行し、両値を判定 JSON の `self_stamp_before` / `self_stamp_after`
 に記録する (両者の不一致 = 自分が検証対象ツリーを汚した証跡)。
 
+`completion-report.md` の `status: complete` は `round-<N>/done-eval.json` が存在して初めて正当となる。
+Step 8 以前 (Step 5/6/7 時点) に `complete` を要求してはならない。
+
 ## Inputs you must inspect
 - `docs/specs/<feature>.md` (Must / Non-goals / 受入条件)
 - git diff (`git diff`)
@@ -58,8 +61,7 @@ spec-grader は以下の 3 モードで動作する:
 これらが検出された場合は `oracle_change_suspected: true` を output に追加し、spec amend 提案を記述する。
 
 ### Mode C: collapsed loop 検査
-`iterations.json` で collapsed loop (末尾 3 ラウンド同一 failure_class) が検出されている場合。
-Mode B と同じ評価に加え、`collapse_root_cause` (spec 問題 / env 問題 / impl 問題) を判定する。
+`iterations.json` で collapsed loop (末尾 3 red ラウンドが同一 failure_class かつ同一 target_test — green/refactor/pivot は窓に数えない。正本: agent-policy.md §10) が検出されている場合。Mode B と同じ評価に加え、`collapse_root_cause` (spec 問題 / env 問題 / impl 問題) を判定する。
 
 ## 重大度昇格
 変更が `DI`/`routing`/`auth`/`config`/`migration`/`schema`/`public export`/`background job`/

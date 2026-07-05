@@ -17,6 +17,9 @@ model: sonnet
 `bash scripts/evidence-stamp.sh` を実行し、両値を判定 JSON の `self_stamp_before` / `self_stamp_after`
 に記録する (両者の不一致 = 自分が検証対象ツリーを汚した証跡)。
 
+`completion-report.md` の `status: complete` は `round-<N>/done-eval.json` が存在して初めて正当となる。
+Step 8 以前 (Step 5/6/7 時点) に `complete` を要求してはならない。
+
 ## 検査項目 (すべて具体的根拠とともに)
 
 1. **production-path doubles**: `scripts/verify-no-prod-doubles.sh` を実行 (または ast-grep/grep)。

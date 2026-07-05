@@ -22,6 +22,9 @@ model: sonnet
 を実行し、両値を判定 JSON の `self_stamp_before` / `self_stamp_after` に記録する
 (両者の不一致 = 自分が検証対象ツリーを汚した証跡)。
 
+`completion-report.md` の `status: complete` は `round-<N>/done-eval.json` が存在して初めて正当となる。
+Step 8 以前 (Step 5/6/7 時点) に `complete` を要求してはならない。
+
 ## round と tree_stamp (stale 判定)
 - 3 verifier artifact (`static-review.json` / `runtime-verify.json` / `spec-review.json`) は
   `.agent-evidence/round-<N>/` に保存される。あなたは **最新 round のみ**を読む
@@ -49,8 +52,9 @@ model: sonnet
   あなたは **意味** を判定する。
 - 下流 verifier (static/runtime/spec) を鵜呑みにせず、最も重い Must を自分で再確認する。
 - 配線漏れ・未結線、境界跨ぎで runtime の観測挙動 assert が無いものは **continue (P0/P1)**。
-- 同じ未達理由が **2 周連続** で残る (collapsed loop) なら `escalate_to_human: true`。
-- `.agent-evidence/iterations.json` が存在する場合、**collapsed loop** (末尾 3 ラウンド同一 failure_class) を確認する。collapsed loop が検出されたら `escalate_to_human: true` + `collapse_detected: true` を output に含める。
+- 同じ未達理由が **2 周連続** で残る (**review-loop stall** — script が検出する exit-2
+  `collapsed loop` とは別概念) なら `escalate_to_human: true`。
+- `.agent-evidence/iterations.json` が存在する場合、**collapsed loop** (末尾 3 red ラウンドが同一 failure_class かつ同一 target_test — green/refactor/pivot は窓に数えない。正本: agent-policy.md §10) を確認する。collapsed loop が検出されたら `escalate_to_human: true` + `collapse_detected: true` を output に含める。
 
 ## Waiver 判定 (ゲート FAIL/未実行時)
 対象ゲートが FAIL または未実行でも、以下を **両方** 満たす場合に限り、そのゲートの FAIL を
@@ -79,7 +83,9 @@ substitute_verification の証跡パス) を記録する。
 | tree_stamp freshness | 最新 round の全 artifact が現在のツリー状態と一致 | stale (印不一致) を検出 → 自己裁量で棚上げせず該当 verifier の再実行を要求 |
 | residual risk | 未解消前提が明示される | 前提不明のまま完了扱い |
 
-## Output (`.agent-evidence/done-eval.json`)
+## Output (`.agent-evidence/round-<N>/done-eval.json` — `N` は今周回の round 番号。round-scoped で
+あり flat `.agent-evidence/done-eval.json` ではない — gate script / SKILL パイプライン表 / fixture は
+すべて round-scoped パスを前提とする)
 
 `tree_stamp` は最新 round から読んだ `evidence-stamp.sh` 出力 (`verify-evidence-freshness.sh` の
 判定に使った現在のツリー状態) をそのまま埋め込む。

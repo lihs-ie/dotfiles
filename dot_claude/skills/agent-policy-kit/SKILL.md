@@ -32,7 +32,10 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
   `verify-no-stub-placeholder.sh` `verify-allowlist-expiry.sh` `verify-failure-class.sh`
   `evidence-stamp.sh` `verify-evidence-freshness.sh` `kit-sync-check.sh` `agent-policy-hook.sh`
   `agent-evidence-gate.sh` `agent-time-budget.sh` `collapsed-loop-guard.sh` `verify-guard-integrity.sh`
-  を `scripts/` にコピー (chmod +x)。
+  `portable.sh` を `scripts/` にコピー (chmod +x)。`portable.sh` は `portable_timeout`/
+  `portable_http_probe` (gtimeout/timeout/perl-alarm、curl/wget/python3 の優先順フォールバック) を
+  提供する source 専用ライブラリで、runtime-verifier の smoke/probe 実行が使う
+  (`docs/specs/harness-campaign-fix2-6.md` Must-19/20)。
   `evidence-stamp.sh` は現在の git
   ツリー状態を JSON で出力し、`verify-evidence-freshness.sh` はそれを呼び出して
   `.agent-evidence/round-<N>/` の verifier artifact が stale でないかを検査する (4 verifier agent +
@@ -96,6 +99,11 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
 3b. `bash scripts/verify-allowlist-expiry.sh --quarantine ci/quarantine.yml` (exit 0, 空 quarantine) を確認する。
 3c. `bash scripts/kit-sync-check.sh --check` (欠落=exit 1 / 陳腐化=exit 2 / all-ok=exit 0) を確認する
     (proven-done Step 0 の freshness 検査が使う経路と同一)。
+3d. **`kit-sync-check.sh` 自身の実在確認**: `test -x scripts/kit-sync-check.sh` (もしくは `-f` +
+    実行権限) を明示的に確認する。3c は `kit-sync-check.sh --check` を**実行するだけ**でスクリプト
+    自体の不在を別途検出しないため、他の verify-*.sh と同格の「必須」であることを Apply 手順自体で
+    担保する (proven-done SKILL.md Step 0 が `kit-sync-check.sh` を 7 本必須スクリプトの 1 つに
+    昇格させたことに対応、3/4 消費 repo で `kit-sync-check.sh` 欠落が放置された実測事故の再発防止)。
 4. 適用結果を要約: 何を新規作成し、何にマージし、何をスキップしたか。
 5. 次アクションを案内: 「`/proven-done <task>` で中心ループを、`/self-improve` で外側ループを駆動できる」。
 

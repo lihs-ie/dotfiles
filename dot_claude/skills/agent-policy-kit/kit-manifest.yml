@@ -1,49 +1,52 @@
 # kit-manifest.yml — agent-policy-kit 単一 KIT_VERSION + per-file sha256 manifest.
 # 生成: kit-manifest-update.sh。手編集禁止 — templates/scripts/ を直してから再生成する。
-kit_version: "1.2.0"
+kit_version: "1.3.0"
 files:
   agent-evidence-gate.sh:
     template: templates/scripts/executable_agent-evidence-gate.sh
-    sha256: "5fe47f23273d9c5b8c663c503fef81d3d420f21657dbf0ae220385a955d13d5b"
+    sha256: "88e2b6c1b32c4f4b6b409347e534a773280df7e126dd61437dc6a8f95c7fbb34"
   agent-policy-hook.sh:
     template: templates/scripts/executable_agent-policy-hook.sh
-    sha256: "9f004f978971d0c168825c227bfecf81b5928c3710e9be0e5ec45226ab0f14d3"
+    sha256: "9c9c60917a525a4dc09b7600bd39a2b41c30761e24454b5ad39e573a0a34241e"
   agent-time-budget.sh:
     template: templates/scripts/executable_agent-time-budget.sh
-    sha256: "f14d9b8ddbb1b100e0c633d34246ed4e8b8616347cb53e688d04fd88de223e68"
+    sha256: "5dac874d78b64c1b790d9590b20ef6619c97a76abf909a887af282ae11bb7581"
   collapsed-loop-guard.sh:
     template: templates/scripts/executable_collapsed-loop-guard.sh
-    sha256: "d0aa1c872b36ea3cb46a1e1bcfc851034bc1cf8d413967b66b933c174363ac42"
+    sha256: "96d0bca47bc9ab7360af1b1f85af334190f4c22e6cbc2d1f9b3222d0146d53fd"
   evidence-stamp.sh:
     template: templates/scripts/executable_evidence-stamp.sh
-    sha256: "2ba4409f73baccc0fe6aef023e0b15b9e9bbb9f1c2a1d1067a4b3699f2000e23"
+    sha256: "b684d403aafb33d1ea1ba2892bd0c1f2c5d946a03a22f0085a288f23f73516bf"
   kit-manifest-update.sh:
     template: templates/scripts/executable_kit-manifest-update.sh
-    sha256: "f5a2c7e04d22838a4f4b9546ba4592c13ab545ecc53db589033df86f97f93bb7"
+    sha256: "8a1bce8767be9ba5859484ea2858f36d9c527756e1daf652ca74f61968cf56d1"
   kit-sync-check.sh:
     template: templates/scripts/executable_kit-sync-check.sh
-    sha256: "43e6c16f73ccf6f175b3da891a397c03ec2bc70273c6f509696e73fc801ab2b9"
+    sha256: "4c03e1cec2a07cd23e0196e8e409f1a4d120af460e6c90bc5179dbbf04dafc64"
+  portable.sh:
+    template: templates/scripts/executable_portable.sh
+    sha256: "e6546bd48d4141df234359f4b89d7bd2d75d18b11b06392d0d3b1120e7638f76"
   verify-allowlist-expiry.sh:
     template: templates/scripts/executable_verify-allowlist-expiry.sh
-    sha256: "50d573b58e30fae4ee507970b0abed91d819e80f01f12eeade98f0d9b7b64a92"
+    sha256: "e9d386b1aac29e36754b12ed99d0546added404d4477f118c95ed09cd57ea663"
   verify-evidence-freshness.sh:
     template: templates/scripts/executable_verify-evidence-freshness.sh
-    sha256: "74a96e64bdd80ed729e2c241206438f41dc1750b2ba6b660b19f1081fdf8bb95"
+    sha256: "b6043012f66cdb367368b583e11d263978f9e0841b0223f35142e08723e9d1b6"
   verify-failure-class.sh:
     template: templates/scripts/executable_verify-failure-class.sh
-    sha256: "d83734f8d0318f96e6882e848d84b55166669ca5cb71224d1430f0225a863475"
+    sha256: "f8e663af738e499a76640d63009a8bdc979a1f59697d0a2ae5a74aadd9f9a067"
   verify-guard-integrity.sh:
     template: templates/scripts/executable_verify-guard-integrity.sh
-    sha256: "5fc64439d587cfabc41b0636176c4e667ad669923b32120dfe2d356a8036bbdd"
+    sha256: "ff69a7f91a2bd8d267bbbcf93dd279ed557f1dc0aad2f927956781b1eafbb74c"
   verify-no-prod-doubles.sh:
     template: templates/scripts/executable_verify-no-prod-doubles.sh
-    sha256: "81202845c32a6b02ce6fd69839a7a1b9a9cd5eabb1e067cea86824c390a23165"
+    sha256: "c704be8c57014a0a1695318fdc339f9c7f60dc3e9e4b2526872cd60e906da96f"
   verify-no-stub-placeholder.sh:
     template: templates/scripts/executable_verify-no-stub-placeholder.sh
-    sha256: "dd8a08098fda257a0da4a1b628a4b8ce202c399246cf1b579fbe4d04b9d4d6f8"
+    sha256: "ff907ba6388f3daf45a812c60de4d315123a2ddf338666168b6dbb8950205e2f"
   verify-test-bypass.sh:
     template: templates/scripts/executable_verify-test-bypass.sh
-    sha256: "01907c43ca79d8361e402750f2e1f21c55215970aa4f805f43319d108ce1a7a9"
+    sha256: "31dd4bcaf0d3b26c7045a4c6dceba4de0c6f2abf408c8098cef39d6889c7f1bf"
   verify-wiring.sh:
     template: templates/scripts/executable_verify-wiring.sh
-    sha256: "8796d4e5fefcfae55d6d237ce6d9e8d554a7922d109db8ae15d423e152a0a6c2"
+    sha256: "37561b98e34041ee4b81b0094ac2b457810a37954f4f4122a8329db900d4c2be"
