@@ -1,46 +1,49 @@
 # kit-manifest.yml — agent-policy-kit 単一 KIT_VERSION + per-file sha256 manifest.
 # 生成: kit-manifest-update.sh。手編集禁止 — templates/scripts/ を直してから再生成する。
-kit_version: "1.1.0"
+kit_version: "1.2.0"
 files:
   agent-evidence-gate.sh:
     template: templates/scripts/executable_agent-evidence-gate.sh
-    sha256: "0ba21cac38b12c871aafe9aa6b51214a1e3a47bff9fa2d8fda8ef5995eb841df"
+    sha256: "5fe47f23273d9c5b8c663c503fef81d3d420f21657dbf0ae220385a955d13d5b"
   agent-policy-hook.sh:
     template: templates/scripts/executable_agent-policy-hook.sh
-    sha256: "ada315d0d10671505928d744181cef75ec605c00bf90c1716800689a6bcfce2d"
+    sha256: "9f004f978971d0c168825c227bfecf81b5928c3710e9be0e5ec45226ab0f14d3"
   agent-time-budget.sh:
     template: templates/scripts/executable_agent-time-budget.sh
-    sha256: "dab3d7fafcfcdc4625f8bab7e3a81e0950195db85e53d30db46d1c15b8012b9b"
+    sha256: "f14d9b8ddbb1b100e0c633d34246ed4e8b8616347cb53e688d04fd88de223e68"
   collapsed-loop-guard.sh:
     template: templates/scripts/executable_collapsed-loop-guard.sh
-    sha256: "19d2920de14201eea33cf5740a6d522e0f57400ec088d483f5b3df64fbb97cd9"
+    sha256: "d0aa1c872b36ea3cb46a1e1bcfc851034bc1cf8d413967b66b933c174363ac42"
   evidence-stamp.sh:
     template: templates/scripts/executable_evidence-stamp.sh
-    sha256: "4b3586bed4cd8ac7435f4df4d69a39e9e9db90ed7cdfd77968574c8cd9ddb5dd"
+    sha256: "2ba4409f73baccc0fe6aef023e0b15b9e9bbb9f1c2a1d1067a4b3699f2000e23"
   kit-manifest-update.sh:
     template: templates/scripts/executable_kit-manifest-update.sh
-    sha256: "294ce84753720d4e963228b24a63b3fd7c2e83014e061e399a87ea4fb305441b"
+    sha256: "f5a2c7e04d22838a4f4b9546ba4592c13ab545ecc53db589033df86f97f93bb7"
   kit-sync-check.sh:
     template: templates/scripts/executable_kit-sync-check.sh
-    sha256: "25f5f2acfcc65db5cf1b63e762aacd845f7f0ee7296d460c2061625745490ee5"
+    sha256: "43e6c16f73ccf6f175b3da891a397c03ec2bc70273c6f509696e73fc801ab2b9"
   verify-allowlist-expiry.sh:
     template: templates/scripts/executable_verify-allowlist-expiry.sh
-    sha256: "80ef0299c587e2d62aabdd0157bf9e257527bd426565fc73d2dfcaa20ebd9c9a"
+    sha256: "50d573b58e30fae4ee507970b0abed91d819e80f01f12eeade98f0d9b7b64a92"
   verify-evidence-freshness.sh:
     template: templates/scripts/executable_verify-evidence-freshness.sh
-    sha256: "829ac58e167492165e12dc94035ddc0489446328687c944fc1d6987b631ba214"
+    sha256: "74a96e64bdd80ed729e2c241206438f41dc1750b2ba6b660b19f1081fdf8bb95"
   verify-failure-class.sh:
     template: templates/scripts/executable_verify-failure-class.sh
-    sha256: "e6cefb4aac0e3d2cb4ead605cb61ef5868b65eb8bfe290622accf6eb044f8dee"
+    sha256: "d83734f8d0318f96e6882e848d84b55166669ca5cb71224d1430f0225a863475"
+  verify-guard-integrity.sh:
+    template: templates/scripts/executable_verify-guard-integrity.sh
+    sha256: "5fc64439d587cfabc41b0636176c4e667ad669923b32120dfe2d356a8036bbdd"
   verify-no-prod-doubles.sh:
     template: templates/scripts/executable_verify-no-prod-doubles.sh
-    sha256: "87463be8a65a6370560ad1bba5a488f26edf007af9aa301302f4c996c2d6b6a0"
+    sha256: "81202845c32a6b02ce6fd69839a7a1b9a9cd5eabb1e067cea86824c390a23165"
   verify-no-stub-placeholder.sh:
     template: templates/scripts/executable_verify-no-stub-placeholder.sh
-    sha256: "bd01c2f011c24606b28c9b360c74466da14c6288d83b125d6b38845cebed2d83"
+    sha256: "dd8a08098fda257a0da4a1b628a4b8ce202c399246cf1b579fbe4d04b9d4d6f8"
   verify-test-bypass.sh:
     template: templates/scripts/executable_verify-test-bypass.sh
-    sha256: "a6662bb87431625c0824c6d2493c2b6bfe73ae4de457eaf87f9fd8a4a6aa0fad"
+    sha256: "01907c43ca79d8361e402750f2e1f21c55215970aa4f805f43319d108ce1a7a9"
   verify-wiring.sh:
     template: templates/scripts/executable_verify-wiring.sh
-    sha256: "5cefa7b68c06683dcb96267828489b58dc00a1a3b6b52de95a2d4644a3015696"
+    sha256: "8796d4e5fefcfae55d6d237ce6d9e8d554a7922d109db8ae15d423e152a0a6c2"

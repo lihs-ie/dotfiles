@@ -1,0 +1,4 @@
+task=agent-time-budget-hook
+started_at=2026-01-01T00:00:00Z
+lane=heavy
+spec_sha256=c0d4a195fec4c5b116ea10cb11b1019611dd8d017f5191e9b2f2236329cfad99

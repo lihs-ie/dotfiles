@@ -217,6 +217,7 @@ orchestrator は実装を肩代わりせず、build/test/grep で実ファイル
 | wiring 追随 (構造) | `wiring_manifest.yml` + `scripts/verify-wiring.sh` + CI policy job |
 | wiring 追随 (データフロー) | runtime-verifier の **real entrypoint 実行 assert** (ファイル共変更検査では捕捉不可) |
 | Done = 二段門 | ① `scripts/agent-evidence-gate.sh` (Stop, 構造) + ② `done-evaluator` agent (意味) |
+| spec-amend / stash-escape 検出 (proven-done 完了迂回対策) | `scripts/verify-guard-integrity.sh` (Step 4 battery + `agent-evidence-gate.sh` の in-place 直接実行、waiver 不能) |
 | 仕様/配線 rubric | `rubric/core/*.md` + `rubric/packs/<lang>.md` (検出言語のみ) を reviewer が参照 |
 | 証跡提出 | `.agent-evidence/` + Stop hook (proven-done 実行中マーカー時のみ発火) |
 | failure_class 記録義務 | `scripts/verify-failure-class.sh` (exit 1: 未知 class / exit 2: collapsed loop) + static-verifier |

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.1.0
+# KIT_VERSION: 1.2.0
 # agent-policy-kit: 消費 repo 側 scripts/verify-*.sh (vendored copy) が
 # kit-manifest.yml の最新版 (単一 KIT_VERSION + per-file sha256) と一致しているか検証する。
 # 経路A (sync dry-run diff) と経路B (proven-done Step 0 freshness) はこのスクリプトを共有する

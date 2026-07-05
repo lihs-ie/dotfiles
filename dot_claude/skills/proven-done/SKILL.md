@@ -11,6 +11,8 @@ description: モック濫用と未配線完了報告を防ぐ三層ループの�
 
 ## 前提チェック (Step 0)
 
+(この Step の後半 (6.) で `.active` 作成と同時に stash-escape 検出用のベースライン記録も行う。)
+
 1. 引数 `<task>` を受け取る。無ければユーザーに 1 行で要求を尋ねる。
 2. リポジトリルート (`git rev-parse --show-toplevel`) を確認。
 3. このリポジトリに `AGENTS.md` と `wiring_manifest.yml` と、6 本の verify スクリプト
@@ -45,6 +47,11 @@ description: モック濫用と未配線完了報告を防ぐ三層ループの�
    `task=<task>` と `started_at=<ISO8601 UTC>` の **2 行のみ** を書く (`lane=` はまだ書かない)。
    `lane=` は Step 1.5 (Two-lane router) でレーン確定後に追記する
    (これがある間だけ Stop hook の証跡ゲートが発火する)。
+   同じタイミングで **stash-escape 検出のベースライン記録** (`docs/specs/guard-evasion-gates.md`
+   Must-3) も行う: `bash scripts/verify-guard-integrity.sh --record-stash-baseline` を実行し、
+   その時点の `git stash list` 全行を `.agent-evidence/stash-baseline.txt` に記録する
+   (git stash によるタスク対象ファイルの隠蔽を Step 4/Stop hook の `verify-guard-integrity.sh` が
+   後で検出できるようにするため)。
 7. TaskCreate で進捗 TODO (Spec/Topology/Implement/Gate/Static/Runtime/SpecGrade/Done) を作る。
 
 > マーカーは**必ず最後に消す** (done でも人間エスカレーションでも)。途中で異常終了して
@@ -118,6 +125,11 @@ spec 受け取り後、以下の判定式でレーンを決める (agent-policy.
   autonomous 実装ループの暴走であり、人間対話の待ち時間ではないため)。以後 `.active` は
   `task=`/`started_at=`/`lane=` の 3 行になり、`agent-time-budget.sh` hook はこの再スタンプ後の
   時刻を起点に budget 経過率を計算する。
+- 同じタイミングで **spec-amend 検出のスタンプ記録** (`docs/specs/guard-evasion-gates.md` Must-1) も
+  行う: `lane=` 追記と同時に `.agent-evidence/.active` に `spec_sha256=<sha256(docs/specs/<task>.md)>`
+  を 4 行目として追記し、`task=`/`started_at=`/`lane=`/`spec_sha256=` の 4 行構成にする。
+  これが `scripts/verify-guard-integrity.sh` の spec-amend サブチェックの基準になり、以後 spec
+  ファイルが無断で書き換えられていないかを Step 4/Stop hook が検出できるようにする。
 
 ### Step 2: Topology
 `topology-mapper` を起動し Impact Map (入口→中継→出口の wire-map + 必須配線点) を生成、
@@ -252,7 +264,13 @@ bash scripts/verify-test-bypass.sh        > .agent-evidence/round-<N>/verify-tes
 bash scripts/verify-wiring.sh             > .agent-evidence/round-<N>/verify-wiring.log 2>&1
 bash scripts/verify-no-stub-placeholder.sh > .agent-evidence/round-<N>/verify-no-stub-placeholder.log 2>&1
 bash scripts/verify-failure-class.sh         > .agent-evidence/round-<N>/verify-failure-class.log 2>&1
+bash scripts/verify-guard-integrity.sh       > .agent-evidence/round-<N>/verify-guard-integrity.log 2>&1
+bash tests/run-shell-tests.sh                > .agent-evidence/round-<N>/run-shell-tests.log 2>&1
 ```
+`verify-guard-integrity.sh` は spec-amend (無断での spec 書き換え) と stash-escape (git stash による
+タスク対象ファイルの隠蔽) を検出する (`docs/specs/guard-evasion-gates.md` Must-2/Must-4)。
+`tests/run-shell-tests.sh` は Must-8 の guard 回帰スイート (spec-amend/stash-escape/active-tamper の
+全 fixture ケース) を含む repo 全体のシェルテストを毎 round 自動実行する。
 いずれか非ゼロ終了なら、その出力を implementer に戻して Step 3 へ(周回にカウントしない)。
 `verify-failure-class.sh` が exit 2 (collapsed loop) を返した場合、実装ループを継続せず **Step 6.5** の oracle-change branch に進む。
 
@@ -283,8 +301,14 @@ runtime-verifier が FAIL を返し、かつ `.agent-evidence/round-<N>/spec-rev
 
 1. **spec-grader を DEEPEST_MODEL で再起動**し、(a) test pyramid 層違反、(b) 環境非決定性、(c) spec 自体の inconsistency を一次評価させ **spec amend 提案** を出させる。
 2. spec amend 提案がある場合は **`AskUserQuestion(...)` を用いてユーザーに提示して承認を得る** (implementer の try-and-error を続けない)。
-3. amend 承認後は spec-curator で spec を更新し、Step 1 から再開する (周回カウントはリセット)。
-4. 3 周連続で oracle_change_suspected が出る場合は **collapsed oracle loop** として人間エスカレーション。
+3. **amend 承認直後**、spec を書き換える**前**に `.agent-evidence/oracle-change-approval.json`
+   (フィールド: `spec_path` / `old_spec_sha256` / `new_spec_sha256` / `approved_at` (ISO8601 UTC) /
+   `approval_summary`) を書く (`docs/specs/guard-evasion-gates.md` Must-1)。これが唯一の正当な
+   spec amend 経路であることを `scripts/verify-guard-integrity.sh` の spec-amend サブチェックが
+   前提とする。
+4. amend 承認後は spec-curator で spec を更新し、`.agent-evidence/.active` の `spec_sha256=` を
+   新しい spec のハッシュに再記録してから、Step 1 から再開する (周回カウントはリセット)。
+5. 3 周連続で oracle_change_suspected が出る場合は **collapsed oracle loop** として人間エスカレーション。
 
 ### Step 7: Spec grade
 `spec-grader` を起動し、spec の Must/Non-goal/契約を `rubric/core/spec.md` (+pack) で照合、
@@ -294,10 +318,14 @@ Must 未達・Non-goal 侵犯・契約破壊は FAIL → Step 3 へ。
 ### Step 8: Done — 二段門
 - **① 構造ゲート**: `.agent-evidence/` root に completion-report.md / commands.txt / wiring-map.json が
   非空で揃うか (Stop hook `agent-evidence-gate.sh` が強制。skill 側でも確認)。加えて
-  `bash scripts/verify-evidence-freshness.sh` を実行し **exit 0 必須**とする。非ゼロ (印不一致・stale)
-  の場合は done-evaluator を起動せず、該当 verifier (static-verifier/runtime-verifier/spec-grader の
-  うち `.agent-evidence/round-<N>/` の該当 `*.json` を現在のツリーで再実行する (done-evaluator に
-  stale 裁量での棚上げを許さない)。
+  `bash scripts/verify-evidence-freshness.sh` **と** `bash scripts/verify-guard-integrity.sh` の
+  双方を実行し **exit 0 必須**とする。非ゼロ (印不一致・stale、または spec-amend/stash-escape の
+  POLICY VIOLATION) の場合は done-evaluator を起動せず、該当 verifier (static-verifier/runtime-verifier/
+  spec-grader のうち `.agent-evidence/round-<N>/` の該当 `*.json` を現在のツリーで再実行する
+  (done-evaluator に stale 裁量での棚上げを許さない)。`agent-evidence-gate.sh` (Stop hook) も
+  `status: complete` 分岐で `verify-guard-integrity.sh` を in-place 直接実行しており
+  (round-log の走査だけに頼らない)、これと重複してでも Step 8 側で明示チェックすることで
+  Stop hook を経由しない呼び出し経路 (テスト/手動実行) でも同じ保証を得る。
 - **② 意味ゲート**: `done-evaluator` を **fresh context** で起動し、`.agent-evidence/round-<N>/` の
   最新 round のみを対象に spec の Must × evidence bundle を照合させ `done-eval.json` を得る。
   `continue` なら blocking_reasons を implementer に戻して Step 3 へ。
