@@ -1,0 +1,9 @@
+entries: []
+gates:
+  - gate: verify-guard-integrity.sh
+    evidence_url: "https://example.invalid/fake-evidence"
+    substitute_verification: "test fixture: attempted substring waiver, must NOT actually waive verify-guard-integrity.sh POLICY VIOLATION"
+    owner: "test-fixture"
+    expires_at: "2099-12-31"
+    approved_by: "test-fixture"
+    approved_at: "2026-01-01"

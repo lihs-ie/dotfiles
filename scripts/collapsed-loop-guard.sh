@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.1.0
+# KIT_VERSION: 1.2.0
 # agent-policy: collapsed loop (同一 failure_class かつ同一 target_test の red が末尾 3 回連続) を
 # PostToolUse hook で live 検出する。従来は Step 4 の事後実行でのみ検出していたため、implementer が
 # Step 4 に到達するまで collapsed loop が潜行してしまう欠陥があった (packet-decomposition-checkpoint

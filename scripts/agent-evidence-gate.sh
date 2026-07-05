@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# KIT_VERSION: 1.1.0
+# KIT_VERSION: 1.2.0
 # agent-policy: Stop hook 証跡完了ゲート (Amendment A5)。
 # proven-done 実行中マーカー (.agent-evidence/.active) がある時だけ発火する。
 # マーカーが無い通常セッションでは完全な no-op (他作業を妨げない)。
@@ -132,6 +132,20 @@ if [ -z "$latest_round" ] || [ ! -s "$latest_round/done-eval.json" ]; then
   block "status: complete ですが最新 round の done-eval.json が見つからない/空です (latest_round=${latest_round:-<none>})"
 fi
 
+# --- Must-6(c)/(d)/(f) (docs/specs/guard-evasion-gates.md): verify-guard-integrity.sh (spec-amend/
+# stash-escape) を round-log 走査に頼らず in-place で直接実行する (collapsed-loop-guard.sh の
+# 直接起動パターンを踏襲)。ここで検出した POLICY VIOLATION は quarantine waiver の対象外
+# (is_gate_waived を一切呼ばない — 「waive 不能」の anti-accident invariant をこの経路自体で保証する)。
+guard_integrity_script="$repository_root/scripts/verify-guard-integrity.sh"
+if [ -f "$guard_integrity_script" ]; then
+  guard_integrity_output="$(bash "$guard_integrity_script" --evidence-dir "$evidence_dir" 2>&1)"
+  guard_integrity_exit=$?
+  if [ "$guard_integrity_exit" -ne 0 ]; then
+    block "status: complete ですが verify-guard-integrity.sh (spec-amend/stash-escape) が POLICY VIOLATION を検出しました (quarantine waiver は適用されません):
+$guard_integrity_output"
+  fi
+fi
+
 # --- Must-5: POLICY VIOLATION + quarantine waiver 検査 ---
 is_gate_waived() {
   # $1 = 対象ゲート名 (例: verify-wiring.sh)  $2 = quarantine file path
@@ -178,9 +192,11 @@ for log in "$latest_round"/verify-*.log; do
   [ -f "$log" ] || continue
   grep -q "POLICY VIOLATION" "$log" 2>/dev/null || continue
   gate_name="$(basename "$log" .log).sh"
-  if ! is_gate_waived "$gate_name" "$quarantine_file"; then
+  # Must-6(f): verify-guard-integrity.sh の POLICY VIOLATION は waiver 対象外 (anti-accident
+  # invariant)。この round-log 経路でも is_gate_waived を呼ばずに常に violation 扱いとする。
+  if [ "$gate_name" = "verify-guard-integrity.sh" ] || ! is_gate_waived "$gate_name" "$quarantine_file"; then
     violation_msg="${violation_msg}
-  - POLICY VIOLATION: $log (gate=$gate_name, waiver なし/期限切れ)"
+  - POLICY VIOLATION: $log (gate=$gate_name, waiver なし/期限切れ、または waive 不能ゲート)"
   fi
 done
 shopt -u nullglob

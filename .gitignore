@@ -4,3 +4,9 @@
 # agent-time-budget.sh のテストが動的生成する started_at fixture (時刻依存のためコミット不可)。
 # ディレクトリ骨格 (.gitkeep) のみ追跡する。
 tests/fixtures/time-budget/*/.active
+
+# verify-guard-integrity.sh のテストが動的生成する spec-amend fixture (実行時に sha256 を計算して
+# 書き込むため、静的コミット不可 — tests/run-shell-tests.sh の write_spec_amend_active 参照)。
+# specs/fixture-task.md (静的コンテンツ) は追跡対象のまま。
+tests/fixtures/guard-evasion-gates/spec-amend/*/.active
+tests/fixtures/guard-evasion-gates/spec-amend/*/oracle-change-approval.json

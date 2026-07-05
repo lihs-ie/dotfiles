@@ -31,8 +31,8 @@ apply する各ファイルについて「新規 / 既存と差分 / スキッ�
 - **scripts/**: `verify-no-prod-doubles.sh` `verify-test-bypass.sh` `verify-wiring.sh`
   `verify-no-stub-placeholder.sh` `verify-allowlist-expiry.sh` `verify-failure-class.sh`
   `evidence-stamp.sh` `verify-evidence-freshness.sh` `kit-sync-check.sh` `agent-policy-hook.sh`
-  `agent-evidence-gate.sh` `agent-time-budget.sh` `collapsed-loop-guard.sh` を `scripts/` にコピー
-  (chmod +x)。
+  `agent-evidence-gate.sh` `agent-time-budget.sh` `collapsed-loop-guard.sh` `verify-guard-integrity.sh`
+  を `scripts/` にコピー (chmod +x)。
   `evidence-stamp.sh` は現在の git
   ツリー状態を JSON で出力し、`verify-evidence-freshness.sh` はそれを呼び出して
   `.agent-evidence/round-<N>/` の verifier artifact が stale でないかを検査する (4 verifier agent +
