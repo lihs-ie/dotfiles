@@ -1,6 +1,6 @@
 # Skill ルーティング表 (正本)
 
-最終更新: 2026-07-02 / 使用実績データ: [USAGE.md](USAGE.md) (`scripts/generate.sh` で再生成)
+最終更新: 2026-07-12 / 使用実績データ: [USAGE.md](USAGE.md) (`scripts/generate.sh` で再生成)
 
 **使い方**: タスクを始める前にこの表で入口 skill を 1 つ選ぶ。迷ったら「まず状況」→ 各セクションの
 先頭にある太字の skill が入口。個別の下位 skill を直接呼ばない (入口が routing する)。
@@ -30,6 +30,7 @@ proven-done、触れないなら triple-research-dev、仕様が固まってい�
 | ADR の鮮度監査・改訂 | `adr-guard` | ADR↔コード乖離検出 + 改訂履歴 |
 | 実装が仕様に即しているか | `spec-compliance-review` | 完了報告前の gate |
 | ドメインモデリングのレビュー | `domain-modeling-review` | |
+| プロダクト↔ドメイン理論の整合性監査 | `domain-integrity-audit` | 8 レイヤー監査。domain-expertise skill を対象プロジェクトに生成・永続化 |
 | アーキテクチャ規約の参照 | `onion-architecture` / `layered-architecture-dip` | |
 
 ## 3. 再開・状況把握の入口
