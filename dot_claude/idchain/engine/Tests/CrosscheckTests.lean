@@ -40,6 +40,22 @@ def configDefaultCases : List TestResult :=
       checkEq "既定 testCommand は none" config.testCommand (none : Option String)
     ]
 
+def configOracleEnginesJson : String := "{
+  \"oracleEngines\": [
+    {\"name\": \"engine-a\", \"command\": \"echo {query}\"},
+    {\"name\": \"engine-b\", \"command\": \"printf '%s\\n' {query}\"}
+  ]
+}"
+
+def configOracleEnginesCases : List TestResult :=
+  match Config.parse configOracleEnginesJson with
+  | .error e => [check s!"oracleEngines 付き config parse 失敗: {e}" false]
+  | .ok config => [
+      checkEq "oracleEngines 2 件" config.oracleEngines.length 2,
+      checkEq "先頭 engine 名" (config.oracleEngines.map (·.name)) ["engine-a", "engine-b"],
+      checkEq "先頭 engine command" ((config.oracleEngines.head?).map (·.command)) (some "echo {query}")
+    ]
+
 def configErrorCases : List TestResult := [
   check "壊れた JSON は error"
     (match Config.parse "{not json" with
@@ -135,6 +151,36 @@ def crosscheckCases : List TestResult := [
      r.unexecutedTestCases.contains ⟨47, 1⟩ && !r.isClean)
 ]
 
+-- M3: kind = .oracle の TC は xunit/crosscheck の判定対象から除外する。
+def registryWithOracle : Registry := {
+  registryFor with
+  testCases := registryFor.testCases ++ [⟨⟨47, 3⟩, "オラクル: 小計クエリの多エンジン一致", .oracle⟩]
+}
+
+def resultWithOracle : CrosscheckResult :=
+  crosscheck registryWithOracle files (parseXunit "<testsuites>
+    <testcase name=\"TC-047-1: 明細3件で小計一致\"/>
+    <testcase name=\"TC-047-2 明細0件で小計0\"><failure/></testcase>
+  </testsuites>")
+
+def oracleExclusionCases : List TestResult := [
+  check "oracle TC は未実装判定から除外される"
+    (!resultWithOracle.unimplementedTestCases.contains (⟨47, 3⟩ : TestCaseIdentifier)),
+  check "oracle TC は未実行判定から除外される"
+    (!resultWithOracle.unexecutedTestCases.contains (⟨47, 3⟩ : TestCaseIdentifier)),
+  check "oracle TC は成功判定にも含まれない"
+    (!resultWithOracle.passedTestCases.contains (⟨47, 3⟩ : TestCaseIdentifier)),
+  check "oracle TC は失敗判定にも含まれない"
+    (!resultWithOracle.failedTestCases.contains (⟨47, 3⟩ : TestCaseIdentifier)),
+  check "oracle TC を追加しても isClean は維持される (48,1 は未実装のまま false)"
+    (resultWithOracle.unimplementedTestCases == [(⟨48, 1⟩ : TestCaseIdentifier)]),
+  check "コードに oracle TC ID が書かれていても unknownReferences には出ない"
+    (let filesWithOracleToken : List (String × String) :=
+      files ++ [("Tests/OracleTests.swift", "// TC-047-3 を参照するコメント")]
+     let r := crosscheck registryWithOracle filesWithOracleToken []
+     !r.unknownReferences.contains (⟨47, 3⟩ : TestCaseIdentifier))
+]
+
 def exportCases : List TestResult :=
   let json := exportJson registryFor
   [
@@ -144,8 +190,8 @@ def exportCases : List TestResult :=
   ]
 
 def suite : String × List TestResult :=
-  ("CrosscheckTests (U7/U8)",
-    configCases ++ configDefaultCases ++ configErrorCases ++ tokenizerCases ++
-    xunitParserCases ++ crosscheckCases ++ exportCases)
+  ("CrosscheckTests (U7/U8/M3)",
+    configCases ++ configDefaultCases ++ configOracleEnginesCases ++ configErrorCases ++ tokenizerCases ++
+    xunitParserCases ++ crosscheckCases ++ oracleExclusionCases ++ exportCases)
 
 end Idchain.Tests.CrosscheckTests

@@ -9,6 +9,12 @@ import Lean.Data.Json
 
 namespace Idchain
 
+/-- オラクル突合エンジン (M3)。command 内の `{query}` プレースホルダをクエリ文字列で置換して実行する。 -/
+structure OracleEngine where
+  name : String
+  command : String
+  deriving Repr, DecidableEq, Inhabited
+
 structure Config where
   repoRoot : String := ".."
   testFileRoots : List String := []
@@ -17,6 +23,7 @@ structure Config where
   testCommand : Option String := none
   implementationPaths : List String := []
   editAllowlist : List String := []
+  oracleEngines : List OracleEngine := []
   deriving Repr, DecidableEq, Inhabited
 
 private def getStringList (json : Lean.Json) (key : String) : Except String (List String) :=
@@ -26,6 +33,19 @@ private def getStringList (json : Lean.Json) (key : String) : Except String (Lis
   | .ok value => do
     let entries ← value.getArr?
     entries.toList.mapM (·.getStr?)
+
+private def parseOracleEngine (json : Lean.Json) : Except String OracleEngine := do
+  let name ← (← json.getObjVal? "name").getStr?
+  let command ← (← json.getObjVal? "command").getStr?
+  pure { name, command }
+
+private def getOracleEngines (json : Lean.Json) : Except String (List OracleEngine) :=
+  match json.getObjVal? "oracleEngines" with
+  | .error _ => .ok []
+  | .ok .null => .ok []
+  | .ok value => do
+    let entries ← value.getArr?
+    entries.toList.mapM parseOracleEngine
 
 private def getOptionalString (json : Lean.Json) (key : String) : Except String (Option String) :=
   match json.getObjVal? key with
@@ -46,6 +66,7 @@ def Config.parse (raw : String) : Except String Config := do
     testCommand := ← getOptionalString json "testCommand"
     implementationPaths := ← getStringList json "implementationPaths"
     editAllowlist := ← getStringList json "editAllowlist"
+    oracleEngines := ← getOracleEngines json
   }
 
 end Idchain

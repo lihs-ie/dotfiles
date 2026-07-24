@@ -85,6 +85,32 @@ assert_contains "idchain-sample: report md に「検証に紐づいていない�
 assert_contains "idchain-sample: report md に「仕様に紐づいていないテスト: 0 件」を含む" \
   "$sample_report_content" "仕様に紐づいていないテスト: 0 件"
 
+# ------------------------------------------------------------
+# M3 付帯機構: 正例 (pairwise/oracle/bench はすべて green)
+# ------------------------------------------------------------
+
+sample_pairwise_exit=0
+sample_pairwise_output="$(cd "$SAMPLE_DIR" && lake exe idchain pairwise 2>&1)" || sample_pairwise_exit=$?
+
+if [ "$sample_pairwise_exit" -eq 0 ]; then
+  echo "PASSED: idchain-sample: pairwise exit 0"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: idchain-sample: pairwise exit 0 (got $sample_pairwise_exit)"
+  fail_count=$((fail_count + 1))
+fi
+
+assert_contains "idchain-sample: pairwise 出力に「100%」を含む (網羅率 100%)" \
+  "$sample_pairwise_output" "100%"
+
+run_test "idchain-sample: oracle (全クエリ一致)" \
+  "(cd $SAMPLE_DIR && lake exe idchain oracle)" \
+  0
+
+run_test "idchain-sample: bench (green 判定)" \
+  "(cd $SAMPLE_DIR && lake exe idchain bench)" \
+  0
+
 # ============================================================
 # 負例: tests/fixtures/idchain-broken (意図的に 5 種の違反 + crosscheck 3 種の不整合)
 # ============================================================
@@ -135,6 +161,32 @@ assert_contains "idchain-broken: crosscheck 出力に未知の TC 参照 (TC-099
 
 assert_contains "idchain-broken: crosscheck 出力に未実行 TC (TC-048-1) を含む" \
   "$broken_crosscheck_output" "TC-048-1"
+
+# ------------------------------------------------------------
+# M3 付帯機構: 負例 (oracle 不一致 / bench 赤判定は exit 1)
+# ------------------------------------------------------------
+
+broken_oracle_exit=0
+(cd "$BROKEN_DIR" && lake exe idchain oracle) >/dev/null 2>&1 || broken_oracle_exit=$?
+
+if [ "$broken_oracle_exit" -eq 1 ]; then
+  echo "PASSED: idchain-broken: oracle exit 1 (不一致)"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: idchain-broken: oracle exit 1 (got $broken_oracle_exit)"
+  fail_count=$((fail_count + 1))
+fi
+
+broken_bench_exit=0
+(cd "$BROKEN_DIR" && lake exe idchain bench) >/dev/null 2>&1 || broken_bench_exit=$?
+
+if [ "$broken_bench_exit" -eq 1 ]; then
+  echo "PASSED: idchain-broken: bench exit 1 (赤判定)"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: idchain-broken: bench exit 1 (got $broken_bench_exit)"
+  fail_count=$((fail_count + 1))
+fi
 
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"

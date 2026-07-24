@@ -20,10 +20,17 @@ structure Registry where
   approvals : List ApprovalRecord
   /-- 再利用禁止台帳: 退役した ID。ここにある番号は同種アーティファクトで再登場してはならない。 -/
   retired : List SimpleIdentifier
+  /-- オラクル突合の対象クエリ (M3)。既存 canon リテラルを壊さないよう既定は空。 -/
+  oracleQueries : List OracleQuery := []
+  /-- ペアワイズ生成の因子一覧 (M3)。既定は空。 -/
+  factors : List Factor := []
+  /-- ベンチマーク定義一覧 (M3)。既定は空。 -/
+  benchmarks : List Benchmark := []
   deriving Repr, Inhabited
 
 def Registry.empty : Registry :=
-  ⟨[], [], [], [], [], [], [], [], []⟩
+  { problems := [], values := [], featureAreas := [], hypotheses := [], specs := [],
+    testCases := [], learnings := [], approvals := [], retired := [] }
 
 def Registry.findProblem (registry : Registry) (number : Nat) : Option Problem :=
   registry.problems.find? (·.number == number)

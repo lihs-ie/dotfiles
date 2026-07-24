@@ -17,6 +17,8 @@ def registry : Registry := {
   learnings := learnings
   approvals := approvals
   retired := retired
+  oracleQueries := oracleQueries
+  benchmarks := benchmarks
 }
 
 def gate : ConsistencyProof Model registry interpretations := {

@@ -6,5 +6,8 @@ def main : IO UInt32 :=
     Idchain.Tests.ArtifactTests.suite,
     Idchain.Tests.ChecksTests.suite,
     Idchain.Tests.CrosscheckTests.suite,
-    Idchain.Tests.GenerationTests.suite
+    Idchain.Tests.GenerationTests.suite,
+    Idchain.Tests.OracleTests.suite,
+    Idchain.Tests.PairwiseTests.suite,
+    Idchain.Tests.BenchTests.suite
   ]

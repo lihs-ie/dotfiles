@@ -2,6 +2,8 @@ import Lean.Data.Json
 import Idchain.Checks
 import Idchain.Crosscheck
 import Idchain.Views
+import Idchain.Oracle
+import Idchain.Bench
 
 /-!
 # 検証レポート生成 (U10、発表 p.37)
@@ -24,32 +26,74 @@ structure SpecVerdict where
 
 def specVerdicts (registry : Registry) (result : CrosscheckResult) : List SpecVerdict :=
   registry.specs.map fun spec =>
-    let testCases := (registry.testCases.filter (·.identifier.spec == spec.number)).map (·.identifier)
+    let specTestCases := registry.testCases.filter (·.identifier.spec == spec.number)
+    let testCases := specTestCases.map (·.identifier)
+    -- kind = .oracle の TC は oracle exe で検証されるため、crosscheck (xunit) 由来の
+    -- 合否判定からは除外する (`Idchain.Crosscheck` の canonIdentifiers 除外と対応)。
+    let verifiableTestCases := (specTestCases.filter (·.kind != TestCaseKind.oracle)).map (·.identifier)
     let approved := registry.isApproved ⟨.sp, spec.number⟩
-    let failed := testCases.filter (result.failedTestCases.contains ·)
-    let missing := testCases.filter fun testCase =>
+    let failed := verifiableTestCases.filter (result.failedTestCases.contains ·)
+    let missing := verifiableTestCases.filter fun testCase =>
       result.unimplementedTestCases.contains testCase ||
       result.unexecutedTestCases.contains testCase
-    let executed := testCases.filter fun testCase =>
+    let executed := verifiableTestCases.filter fun testCase =>
       result.passedTestCases.contains testCase || result.failedTestCases.contains testCase
     { spec, approved, testCases, failed, missing
       verified := !executed.isEmpty
       passed := approved && !testCases.isEmpty && failed.isEmpty && missing.isEmpty &&
-        testCases.all (result.passedTestCases.contains ·) }
+        verifiableTestCases.all (result.passedTestCases.contains ·) }
 
 /-- 検証に紐づいていない仕様 (承認済かつ実行済 TC を持つ、が成立しない仕様) の数。 -/
 def unchainedSpecCount (verdicts : List SpecVerdict) : Nat :=
   (verdicts.filter fun verdict => !(verdict.approved && verdict.verified)).length
 
+/-- oracle 未実施 (none) は判定に影響させない (graceful skip)。実施済で不一致なら FAIL。 -/
+private def oracleOk (oracleResult : Option OracleRunResult) : Bool :=
+  match oracleResult with
+  | none => true
+  | some result => result.allAgreed
+
+/-- bench 未実施 (none) は判定に影響させない。実施済で worst = red なら FAIL。 -/
+private def benchOk (benchResult : Option BenchRunResult) : Bool :=
+  match benchResult with
+  | none => true
+  | some result => result.worst != .red
+
 def overallPass (violations : List Violation) (result : CrosscheckResult)
-    (verdicts : List SpecVerdict) : Bool :=
+    (verdicts : List SpecVerdict) (oracleResult : Option OracleRunResult := none)
+    (benchResult : Option BenchRunResult := none) : Bool :=
   violations.isEmpty && result.isClean && result.failedTestCases.isEmpty &&
-  verdicts.all (·.passed)
+  verdicts.all (·.passed) && oracleOk oracleResult && benchOk benchResult
+
+/-- 「## オラクル突合」セクション。未実施は「未実施」とだけ記載する (graceful skip)。 -/
+private def renderOracleSection (oracleResult : Option OracleRunResult) : List String :=
+  match oracleResult with
+  | none => ["## オラクル突合", "", "未実施", ""]
+  | some result =>
+    let rows := result.queries.map fun queryResult =>
+      let outputCells := queryResult.outputs.map fun (engine, output) => s!"{engine}={output}"
+      s!"| {queryResult.testCase.render} | {if queryResult.agreed then "一致 ✓" else "不一致 ✗"} | {String.intercalate "、" outputCells} |"
+    ["## オラクル突合", "",
+     s!"- 総合判定: {if result.allAgreed then "全クエリ一致" else "不一致あり"}", "",
+     "| クエリ | 判定 | 各エンジン出力 |", "|---|---|---|"] ++ rows ++ [""]
+
+/-- 「## ベンチマーク」セクション。未実施は「未実施」とだけ記載する (graceful skip)。 -/
+private def renderBenchSection (benchResult : Option BenchRunResult) : List String :=
+  match benchResult with
+  | none => ["## ベンチマーク", "", "未実施", ""]
+  | some result =>
+    let rows := result.benchmarks.map fun benchmarkResult =>
+      s!"| {benchmarkResult.name} | {benchmarkResult.milliseconds}ms | {benchmarkResult.judgement.label} |"
+    ["## ベンチマーク", "",
+     s!"- 総合判定: {result.worst.label}", "",
+     "| ベンチマーク | 計測値 | 判定 |", "|---|---|---|"] ++ rows ++ [""]
 
 def renderReportMarkdown (date : String) (registry : Registry)
-    (violations : List Violation) (result : CrosscheckResult) : String :=
+    (violations : List Violation) (result : CrosscheckResult)
+    (oracleResult : Option OracleRunResult := none)
+    (benchResult : Option BenchRunResult := none) : String :=
   let verdicts := specVerdicts registry result
-  let overall := overallPass violations result verdicts
+  let overall := overallPass violations result verdicts oracleResult benchResult
   let verdictRows := verdicts.map fun verdict =>
     let mark := if verdict.passed then "PASS ✓" else "FAIL ✗"
     let testCaseCells := verdict.testCases.map fun testCase =>
@@ -70,17 +114,46 @@ def renderReportMarkdown (date : String) (registry : Registry)
      s!"- テスト失敗: {result.failedTestCases.length} 件", "",
      "## 仕様別判定", "",
      "| 仕様 | 判定 | テストケース |", "|---|---|---|"] ++ verdictRows ++
-    ["", "## 違反一覧", ""] ++ violationLines)
+    ["", "## 違反一覧", ""] ++ violationLines ++
+    [""] ++ renderOracleSection oracleResult ++ renderBenchSection benchResult)
+
+open Lean (Json) in
+private def oracleResultJson (oracleResult : Option OracleRunResult) : Json :=
+  match oracleResult with
+  | none => Json.mkObj [("status", Json.str "未実施")]
+  | some result => Json.mkObj [
+      ("status", Json.str "実施済"),
+      ("allAgreed", Json.bool result.allAgreed),
+      ("queries", Json.arr (result.queries.map fun queryResult => Json.mkObj [
+        ("testCase", Json.str queryResult.testCase.render),
+        ("agreed", Json.bool queryResult.agreed)]).toArray)]
+
+open Lean (Json) in
+private def benchResultJson (benchResult : Option BenchRunResult) : Json :=
+  match benchResult with
+  | none => Json.mkObj [("status", Json.str "未実施")]
+  | some result => Json.mkObj [
+      ("status", Json.str "実施済"),
+      ("worst", Json.str result.worst.label),
+      ("benchmarks", Json.arr (result.benchmarks.map fun benchmarkResult => Json.mkObj [
+        ("name", Json.str benchmarkResult.name),
+        ("milliseconds", Json.num ⟨(benchmarkResult.milliseconds : Int), 0⟩),
+        ("judgement", Json.str benchmarkResult.judgement.label)]).toArray)]
 
 open Lean (Json) in
 def renderReportJson (date : String) (registry : Registry)
-    (violations : List Violation) (result : CrosscheckResult) : String :=
+    (violations : List Violation) (result : CrosscheckResult)
+    (oracleResult : Option OracleRunResult := none)
+    (benchResult : Option BenchRunResult := none) : String :=
   let verdicts := specVerdicts registry result
   (Json.mkObj [
     ("date", Json.str date),
-    ("overall", Json.str (if overallPass violations result verdicts then "PASS" else "FAIL")),
+    ("overall", Json.str
+      (if overallPass violations result verdicts oracleResult benchResult then "PASS" else "FAIL")),
     ("unchainedSpecs", Json.num ⟨(unchainedSpecCount verdicts : Int), 0⟩),
     ("orphanTests", Json.num ⟨(result.orphanTests.length : Int), 0⟩),
+    ("oracle", oracleResultJson oracleResult),
+    ("bench", benchResultJson benchResult),
     ("violations", Json.arr (violations.map fun violation => Json.mkObj [
       ("kind", Json.str violation.kind.label),
       ("identifier", Json.str violation.identifier),

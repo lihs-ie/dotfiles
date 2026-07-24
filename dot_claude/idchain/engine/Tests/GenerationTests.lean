@@ -2,6 +2,8 @@ import Idchain.Views
 import Idchain.Report
 import Idchain.Approve
 import Idchain.Config
+import Idchain.Oracle
+import Idchain.Bench
 import Tests.ChecksTests
 import Tests.Framework
 
@@ -78,6 +80,21 @@ def verdictCases : List TestResult :=
       (!(overallPass [⟨.orphanSpec, "SP-047", ""⟩] passResult verdictsPass))
   ]
 
+-- M3: SP に oracle kind の TC が追加されても crosscheck ベースの合否判定に影響しない
+def registryWithOracleTestCase : Registry := {
+  validRegistry with
+  testCases := validRegistry.testCases ++ [⟨⟨47, 3⟩, "オラクル: 小計クエリの多エンジン一致", .oracle⟩]
+}
+
+def verdictWithOracleCases : List TestResult :=
+  let verdicts := specVerdicts registryWithOracleTestCase passResult
+  [
+    checkEq "SP は 1 件 (oracle TC 追加後も)" verdicts.length 1,
+    check "oracle TC を含んでも xunit 全 pass なら verdict passed" (verdicts.all (·.passed)),
+    check "verdict の testCases には oracle TC も表示上含まれる"
+      ((verdicts.head!.testCases.contains (⟨47, 3⟩ : TestCaseIdentifier)))
+  ]
+
 def reportMarkdown := renderReportMarkdown "2026-07-24" validRegistry [] passResult
 
 def reportCases : List TestResult := [
@@ -89,6 +106,46 @@ def reportCases : List TestResult := [
   check "JSON に overall" (contains (renderReportJson "2026-07-24" validRegistry [] passResult) "overall"),
   check "失敗時は FAIL 表示"
     (contains (renderReportMarkdown "2026-07-24" validRegistry [] failResult) "FAIL")
+]
+
+-- M3: report への oracle/bench 組込
+def oracleAgreed : OracleRunResult :=
+  { queries := [{ testCase := ⟨47, 3⟩, agreed := true, outputs := [("a", "6"), ("b", "6")] }]
+    allAgreed := true }
+
+def oracleDisagreed : OracleRunResult :=
+  { queries := [{ testCase := ⟨47, 3⟩, agreed := false, outputs := [("a", "6"), ("b", "7")] }]
+    allAgreed := false }
+
+def benchGreen : BenchRunResult :=
+  { benchmarks := [⟨"サンプル", 42, .green⟩], worst := .green }
+
+def benchRed : BenchRunResult :=
+  { benchmarks := [⟨"サンプル", 5000, .red⟩], worst := .red }
+
+def reportOracleBenchCases : List TestResult := [
+  check "oracle/bench 未実施は「未実施」と表示"
+    (let md := renderReportMarkdown "2026-07-24" validRegistry [] passResult none none
+     contains md "## オラクル突合" && contains md "## ベンチマーク" && contains md "未実施"),
+  check "oracle 未実施は overallPass に影響しない"
+    (overallPass [] passResult (specVerdicts validRegistry passResult) none none),
+  check "oracle 一致は overallPass 成立を維持"
+    (overallPass [] passResult (specVerdicts validRegistry passResult) (some oracleAgreed) none),
+  check "oracle 不一致は overallPass を FAIL にする"
+    (!(overallPass [] passResult (specVerdicts validRegistry passResult) (some oracleDisagreed) none)),
+  check "bench green は overallPass 成立を維持"
+    (overallPass [] passResult (specVerdicts validRegistry passResult) none (some benchGreen)),
+  check "bench red は overallPass を FAIL にする"
+    (!(overallPass [] passResult (specVerdicts validRegistry passResult) none (some benchRed))),
+  check "レポート md にオラクル結果が含まれる"
+    (contains (renderReportMarkdown "2026-07-24" validRegistry [] passResult (some oracleAgreed) none)
+      "TC-047-3"),
+  check "レポート md にベンチマーク結果が含まれる"
+    (contains (renderReportMarkdown "2026-07-24" validRegistry [] passResult none (some benchGreen))
+      "サンプル"),
+  check "レポート json に oracle/bench キーが含まれる"
+    (let json := renderReportJson "2026-07-24" validRegistry [] passResult (some oracleAgreed) (some benchGreen)
+     contains json "\"oracle\"" && contains json "\"bench\"")
 ]
 
 -- U11: 承認 codegen
@@ -125,6 +182,7 @@ def configNullCases : List TestResult :=
 def suite : String × List TestResult :=
   ("GenerationTests (U9/U10/U11)",
     viewCommonCases ++ whyWhatCases ++ specificationCases ++ testDesignCases ++ ledgerCases ++
-    verdictCases ++ reportCases ++ approveCases ++ configNullCases)
+    verdictCases ++ verdictWithOracleCases ++ reportCases ++ reportOracleBenchCases ++
+    approveCases ++ configNullCases)
 
 end Idchain.Tests.GenerationTests

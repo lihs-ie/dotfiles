@@ -4,3 +4,6 @@ import Tests.ArtifactTests
 import Tests.ChecksTests
 import Tests.CrosscheckTests
 import Tests.GenerationTests
+import Tests.OracleTests
+import Tests.PairwiseTests
+import Tests.BenchTests

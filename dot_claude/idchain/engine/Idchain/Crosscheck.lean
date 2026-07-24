@@ -88,7 +88,12 @@ def CrosscheckResult.isClean (result : CrosscheckResult) : Bool :=
 
 def crosscheck (registry : Registry) (fileContents : List (String × String))
     (xunitCases : List XunitCase) : CrosscheckResult :=
-  let canonIdentifiers := registry.testCases.map (·.identifier)
+  -- kind = .oracle の TC は oracle exe で検証されるため、xunit ベースの
+  -- 未実装/未実行/成功/失敗判定 (canonIdentifiers 由来) からは除外する。
+  -- ただし「既知の ID」としては扱う (allIdentifiers) ので unknownReferences には出ない。
+  let allIdentifiers := registry.testCases.map (·.identifier)
+  let canonIdentifiers :=
+    (registry.testCases.filter (·.kind != TestCaseKind.oracle)).map (·.identifier)
   let codeIdentifiers :=
     (fileContents.flatMap fun (_, content) => extractTestCaseTokens content).eraseDups
   let executed := xunitCases.filter (fun testCase => !testCase.skipped)
@@ -97,7 +102,7 @@ def crosscheck (registry : Registry) (fileContents : List (String × String))
     (executedReferences.filter fun (_, identifiers) => identifiers.isEmpty).map (·.1.name)
   let xunitIdentifiers := (executedReferences.flatMap (·.2)).eraseDups
   let unknownReferences :=
-    ((codeIdentifiers ++ xunitIdentifiers).eraseDups).filter (!canonIdentifiers.contains ·)
+    ((codeIdentifiers ++ xunitIdentifiers).eraseDups).filter (!allIdentifiers.contains ·)
   let unimplementedTestCases := canonIdentifiers.filter (!codeIdentifiers.contains ·)
   let unexecutedTestCases := canonIdentifiers.filter fun identifier =>
     codeIdentifiers.contains identifier && !xunitIdentifiers.contains identifier

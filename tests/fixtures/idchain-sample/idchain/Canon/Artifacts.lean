@@ -28,7 +28,8 @@ def specs : List Spec := [
 
 def testCases : List TestCase := [
   ⟨⟨47, 1⟩, "明細3件 → 小計 = 合計", .example⟩,
-  ⟨⟨47, 2⟩, "明細0件 → 小計 = 0", .example⟩
+  ⟨⟨47, 2⟩, "明細0件 → 小計 = 0", .example⟩,
+  ⟨⟨47, 3⟩, "オラクル: 小計クエリの多エンジン一致", .oracle⟩
 ]
 
 def learnings : List Learning := [
@@ -36,6 +37,20 @@ def learnings : List Learning := [
 ]
 
 def retired : List SimpleIdentifier := []
+
+-- M3: オラクル突合・ペアワイズ・ベンチマークの fixture。
+def oracleQueries : List OracleQuery := [
+  ⟨⟨47, 3⟩, "6"⟩
+]
+
+def factors : List Factor := [
+  ⟨"データ規模", ["小", "中", "大"]⟩,
+  ⟨"エンジン", ["旧", "新"]⟩
+]
+
+def benchmarks : List Benchmark := [
+  ⟨"集計処理", "echo 42", 100, 1000⟩
+]
 
 /-- 状態モデル: 明細と小計。 -/
 structure Model where

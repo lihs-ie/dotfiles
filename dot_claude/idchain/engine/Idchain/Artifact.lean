@@ -87,4 +87,24 @@ structure Learning where
   outcome : String
   deriving Repr, DecidableEq, Inhabited
 
+/-- オラクルクエリ: kind = .oracle の TC に対応し、多エンジンに投げる問い合わせ文字列を持つ。 -/
+structure OracleQuery where
+  testCase : TestCaseIdentifier
+  query : String
+  deriving Repr, DecidableEq, Inhabited
+
+/-- ペアワイズ生成の因子 (パラメータ) とその水準一覧。 -/
+structure Factor where
+  name : String
+  levels : List String
+  deriving Repr, DecidableEq, Inhabited
+
+/-- ベンチマーク定義。stdout 最終行が整数ミリ秒であるコマンドを実行し、閾値で赤黄緑を判定する。 -/
+structure Benchmark where
+  name : String
+  command : String
+  greenThresholdMilliseconds : Nat
+  redThresholdMilliseconds : Nat
+  deriving Repr, DecidableEq, Inhabited
+
 end Idchain

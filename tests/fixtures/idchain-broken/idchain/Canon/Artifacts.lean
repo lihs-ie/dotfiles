@@ -36,6 +36,16 @@ def learnings : List Learning := [
 
 def retired : List SimpleIdentifier := [⟨.fa, 1⟩]
 
+-- M3 負例: oracle 不一致 (engine 間で出力が食い違う) + bench 赤判定。
+-- TC-48-1 は既存の kind = .example なので、oracle 整合検査 (kind 不一致) の警告表示も併せて確認する。
+def oracleQueries : List OracleQuery := [
+  ⟨⟨48, 1⟩, "X"⟩
+]
+
+def benchmarks : List Benchmark := [
+  ⟨"重い処理", "echo 5000", 100, 1000⟩
+]
+
 /-- 状態モデル: 負例のためプレースホルダのみ。 -/
 structure Model where
   placeholder : Unit := ()

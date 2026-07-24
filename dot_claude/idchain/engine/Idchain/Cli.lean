@@ -6,6 +6,9 @@ import Idchain.Views
 import Idchain.Report
 import Idchain.Approve
 import Idchain.Init
+import Idchain.Oracle
+import Idchain.Pairwise
+import Idchain.Bench
 
 /-!
 # CLI (対象 repo の IdchainMain が呼ぶライブラリ層)
@@ -147,6 +150,30 @@ def runViews (registry : Registry) (checkOnly : Bool) : IO UInt32 := do
     IO.println s!"idchain views: {rendered.length} ファイルを views/ に生成した"
     return 0
 
+/-- cwd の `oracle-results.json` があれば読み込む (`runOracle` の出力を `runReport` が拾う結線点)。 -/
+def loadOracleResult : IO (Option OracleRunResult) := do
+  let path : System.FilePath := "oracle-results.json"
+  if (← path.pathExists) then
+    match parseOracleResultsJson (← IO.FS.readFile path) with
+    | .error message =>
+      IO.eprintln s!"idchain report: oracle-results.json の解析に失敗: {message}"
+      pure none
+    | .ok result => pure (some result)
+  else
+    pure none
+
+/-- cwd の `bench-results.json` があれば読み込む (`runBench` の出力を `runReport` が拾う結線点)。 -/
+def loadBenchResult : IO (Option BenchRunResult) := do
+  let path : System.FilePath := "bench-results.json"
+  if (← path.pathExists) then
+    match parseBenchResultsJson (← IO.FS.readFile path) with
+    | .error message =>
+      IO.eprintln s!"idchain report: bench-results.json の解析に失敗: {message}"
+      pure none
+    | .ok result => pure (some result)
+  else
+    pure none
+
 def runReport (registry : Registry) (date : String) : IO UInt32 := do
   match ← loadConfig with
   | .error message =>
@@ -164,14 +191,16 @@ def runReport (registry : Registry) (date : String) : IO UInt32 := do
         | _ => []
       let violations := registry.checkAll
       let result := crosscheck registry fileContents xunitCases
+      let oracleResult ← loadOracleResult
+      let benchResult ← loadBenchResult
       let directory : System.FilePath := "reports" / date
       IO.FS.createDirAll directory
       IO.FS.writeFile (directory / "verification-report.md")
-        (renderReportMarkdown date registry violations result)
+        (renderReportMarkdown date registry violations result oracleResult benchResult)
       IO.FS.writeFile (directory / "verification-report.json")
-        (renderReportJson date registry violations result)
+        (renderReportJson date registry violations result oracleResult benchResult)
       let verdicts := specVerdicts registry result
-      let overall := overallPass violations result verdicts
+      let overall := overallPass violations result verdicts oracleResult benchResult
       IO.println s!"idchain report: reports/{date}/ に生成 (総合判定: {if overall then "PASS" else "FAIL"})"
       return (if overall then 0 else 1)
 
@@ -201,6 +230,112 @@ def runApprove (registry : Registry) (args : List String) : IO UInt32 := do
     IO.eprintln "usage: idchain approve <ID> --by <承認者> --note <判断根拠> --date <YYYY-MM-DD>"
     return 2
 
+/-- registry.oracleQueries の testCase が正本に存在し kind = .oracle であるかの整合検査 (警告のみ、check の違反種別は増やさない)。 -/
+def warnOracleQueryConsistency (registry : Registry) (oracleQuery : OracleQuery) : IO Unit := do
+  match registry.testCases.find? (·.identifier == oracleQuery.testCase) with
+  | none =>
+    IO.println s!"警告: oracle クエリ {oracleQuery.testCase.render} に対応する TC が正本に存在しない"
+  | some testCase =>
+    if testCase.kind != TestCaseKind.oracle then
+      IO.println s!"警告: {oracleQuery.testCase.render} は kind = oracle ではない TC を参照している"
+
+/-- 1 クエリ × 1 エンジンを bash -c で実行し (trim 済) 出力を得る。実行エラーは特別な出力文字列で表す。 -/
+def runOracleEngine (engine : OracleEngine) (query : String) : IO (String × String) := do
+  let command := substituteQuery engine.command query
+  try
+    let result ← IO.Process.output { cmd := "bash", args := #["-c", command] }
+    if result.exitCode == 0 then
+      return (engine.name, trimWhitespace result.stdout)
+    else
+      return (engine.name, s!"<非ゼロ終了コード {result.exitCode}>")
+  catch e =>
+    return (engine.name, s!"<実行エラー: {e}>")
+
+def runOracle (registry : Registry) : IO UInt32 := do
+  match ← loadConfig with
+  | .error message =>
+    IO.eprintln s!"idchain oracle: idchain.json の解析に失敗: {message}"
+    return 2
+  | .ok config =>
+    if registry.oracleQueries.isEmpty || config.oracleEngines.isEmpty then
+      IO.println "oracle: 未設定のためスキップ"
+      return 0
+    else
+      for oracleQuery in registry.oracleQueries do
+        warnOracleQueryConsistency registry oracleQuery
+      let mut queryResults : List OracleQueryResult := []
+      let mut allAgreed := true
+      for oracleQuery in registry.oracleQueries do
+        let mut outputs : List (String × String) := []
+        for engine in config.oracleEngines do
+          outputs := outputs ++ [← runOracleEngine engine oracleQuery.query]
+        let agreed := judgeOracle outputs
+        if !agreed then allAgreed := false
+        queryResults := queryResults ++ [{ testCase := oracleQuery.testCase, agreed, outputs }]
+        IO.println s!"{oracleQuery.testCase.render}: {if agreed then "一致" else "不一致"}"
+        for (name, output) in outputs do
+          IO.println s!"  - {name}: {output}"
+      let runResult : OracleRunResult := { queries := queryResults, allAgreed }
+      IO.FS.writeFile "oracle-results.json" (renderOracleResultsJson runResult)
+      if allAgreed then
+        IO.println "idchain oracle: 全クエリ一致"
+        return 0
+      else
+        IO.println "idchain oracle: 不一致あり"
+        return 1
+
+def runPairwise (registry : Registry) : IO UInt32 := do
+  if registry.factors.length < 2 || registry.factors.any (·.levels.isEmpty) then
+    IO.println "pairwise: 因子未定義のためスキップ"
+    return 0
+  else
+    let configurations := generateConfigurations registry.factors
+    let (coveredCount, totalCount) := coverage registry.factors configurations
+    IO.println s!"| {String.intercalate " | " (registry.factors.map (·.name))} |"
+    for configuration in configurations do
+      IO.println s!"| {String.intercalate " | " configuration} |"
+    if coveredCount != totalCount then
+      IO.eprintln s!"idchain pairwise: 内部エラー — 網羅率 {coveredCount}/{totalCount} (100% ではない)"
+      return 1
+    else
+      let directProductSize := registry.factors.foldl (fun acc factor => acc * factor.levels.length) 1
+      IO.println s!"idchain pairwise: 2因子ペア網羅率 100% ({coveredCount}/{totalCount})、構成数 {configurations.length} (直積 {directProductSize} 通りから圧縮)"
+      return 0
+
+/-- 1 ベンチマークを bash -c で実行し判定する。実行エラー・parse 失敗は赤扱い (計測値 0)。 -/
+def runOneBenchmark (benchmark : Benchmark) : IO BenchmarkResult := do
+  try
+    let output ← IO.Process.output { cmd := "bash", args := #["-c", benchmark.command] }
+    match parseMilliseconds output.stdout with
+    | some milliseconds =>
+      pure { name := benchmark.name, milliseconds, judgement := judgeBenchmark benchmark milliseconds }
+    | none =>
+      IO.eprintln s!"idchain bench: {benchmark.name} の計測値 parse に失敗 (stdout: {trimWhitespace output.stdout})"
+      pure { name := benchmark.name, milliseconds := 0, judgement := .red }
+  catch e =>
+    IO.eprintln s!"idchain bench: {benchmark.name} の実行エラー: {e}"
+    pure { name := benchmark.name, milliseconds := 0, judgement := .red }
+
+def runBench (registry : Registry) : IO UInt32 := do
+  if registry.benchmarks.isEmpty then
+    IO.println "bench: 未設定のためスキップ"
+    return 0
+  else
+    let mut results : List BenchmarkResult := []
+    for benchmark in registry.benchmarks do
+      let result ← runOneBenchmark benchmark
+      results := results ++ [result]
+      IO.println s!"| {result.name} | {result.milliseconds}ms | green={benchmark.greenThresholdMilliseconds}/red={benchmark.redThresholdMilliseconds} | {result.judgement.label} |"
+    let worst := worstJudgement (results.map (·.judgement))
+    let runResult : BenchRunResult := { benchmarks := results, worst }
+    IO.FS.writeFile "bench-results.json" (renderBenchResultsJson runResult)
+    if worst == BenchmarkJudgement.red then
+      IO.println "idchain bench: 赤判定あり"
+      return 1
+    else
+      IO.println s!"idchain bench: 総合判定 {worst.label}"
+      return 0
+
 def runInitCommand (rest : List String) : IO UInt32 := do
   match ← Idchain.Init.detectEngineRoot with
   | none =>
@@ -222,10 +357,13 @@ def run (registry : Registry) (args : List String) : IO UInt32 := do
   | ["views"] => runViews registry false
   | ["views", "--check"] => runViews registry true
   | ["report", "--date", date] => runReport registry date
+  | ["oracle"] => runOracle registry
+  | ["pairwise"] => runPairwise registry
+  | ["bench"] => runBench registry
   | "approve" :: rest => runApprove registry rest
   | "init" :: rest => runInitCommand rest
   | _ => do
-    IO.eprintln "usage: idchain <check|export|crosscheck|views [--check]|report --date <YYYY-MM-DD>|approve <ID> --by <承認者> --note <根拠> --date <日付>|init <target-repo> [--update]>"
+    IO.eprintln "usage: idchain <check|export|crosscheck|views [--check]|report --date <YYYY-MM-DD>|oracle|pairwise|bench|approve <ID> --by <承認者> --note <根拠> --date <日付>|init <target-repo> [--update]>"
     return 2
 
 end Idchain.Cli

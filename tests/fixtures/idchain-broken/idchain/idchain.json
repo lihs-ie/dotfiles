@@ -5,5 +5,9 @@
   "xunitPath": "results/latest-tests.xml",
   "testCommand": "swift test --xunit-output results/latest-tests.xml",
   "implementationPaths": ["Sources/"],
-  "editAllowlist": []
+  "editAllowlist": [],
+  "oracleEngines": [
+    {"name": "engine-a", "command": "echo A"},
+    {"name": "engine-b", "command": "echo B"}
+  ]
 }
