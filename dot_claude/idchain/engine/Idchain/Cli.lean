@@ -2,6 +2,10 @@ import Idchain.Checks
 import Idchain.Config
 import Idchain.Export
 import Idchain.Crosscheck
+import Idchain.Views
+import Idchain.Report
+import Idchain.Approve
+import Idchain.Init
 
 /-!
 # CLI (対象 repo の IdchainMain が呼ぶライブラリ層)
@@ -118,13 +122,110 @@ def runCrosscheck (registry : Registry) : IO UInt32 := do
       IO.println s!"idchain crosscheck: 孤児テスト {result.orphanTests.length} 件 / 未知参照 {result.unknownReferences.length} 件 / 未実装 {result.unimplementedTestCases.length} 件 / 未実行 {result.unexecutedTestCases.length} 件"
       return (if result.isClean then 0 else 1)
 
+def runViews (registry : Registry) (checkOnly : Bool) : IO UInt32 := do
+  let rendered := views registry
+  if checkOnly then
+    let mut stale : List String := []
+    for (name, content) in rendered do
+      let path : System.FilePath := "views" / name
+      let fresh ←
+        if (← path.pathExists) then pure ((← IO.FS.readFile path) == content)
+        else pure false
+      if !fresh then
+        stale := stale ++ [name]
+    if stale.isEmpty then
+      IO.println "idchain views --check: 全ビューが正本と一致 (鮮度 OK)"
+      return 0
+    else
+      for name in stale do
+        IO.println s!"STALE VIEW: views/{name} (正本と不一致。lake exe idchain views で再生成する)"
+      return 1
+  else
+    IO.FS.createDirAll "views"
+    for (name, content) in rendered do
+      IO.FS.writeFile ("views" / name) content
+    IO.println s!"idchain views: {rendered.length} ファイルを views/ に生成した"
+    return 0
+
+def runReport (registry : Registry) (date : String) : IO UInt32 := do
+  match ← loadConfig with
+  | .error message =>
+    IO.eprintln s!"idchain report: idchain.json の解析に失敗: {message}"
+    return 2
+  | .ok config =>
+    let fileContents ← readTestFiles config
+    match ← loadXunit config with
+    | .missing path =>
+      IO.eprintln s!"idchain report: xunit 結果 {path} が存在しない (先に testCommand でテストを実行する)"
+      return 2
+    | availability =>
+      let xunitCases := match availability with
+        | .loaded cases => cases
+        | _ => []
+      let violations := registry.checkAll
+      let result := crosscheck registry fileContents xunitCases
+      let directory : System.FilePath := "reports" / date
+      IO.FS.createDirAll directory
+      IO.FS.writeFile (directory / "verification-report.md")
+        (renderReportMarkdown date registry violations result)
+      IO.FS.writeFile (directory / "verification-report.json")
+        (renderReportJson date registry violations result)
+      let verdicts := specVerdicts registry result
+      let overall := overallPass violations result verdicts
+      IO.println s!"idchain report: reports/{date}/ に生成 (総合判定: {if overall then "PASS" else "FAIL"})"
+      return (if overall then 0 else 1)
+
+def runApprove (registry : Registry) (args : List String) : IO UInt32 := do
+  match args with
+  | [target, "--by", approvedBy, "--note", note, "--date", date] =>
+    match SimpleIdentifier.parse target with
+    | none =>
+      IO.eprintln s!"idchain approve: 不正な ID: {target}"
+      return 2
+    | some identifier =>
+      match registry.contentHashFor identifier with
+      | none =>
+        IO.eprintln s!"idchain approve: 対象 {target} が正本に存在しない"
+        return 2
+      | some contentHash =>
+        if !(← ("Canon" : System.FilePath).pathExists) then
+          IO.eprintln "idchain approve: Canon/ が存在しない (対象 repo の idchain/ から実行する)"
+          return 2
+        let record : ApprovalRecord := ⟨identifier, { approvedBy, date, note, contentHash }⟩
+        IO.FS.writeFile ("Canon" / "Approvals.lean")
+          (renderApprovalsLean (upsertApproval registry.approvals record))
+        IO.println s!"idchain approve: {target} を承認登録した (hash 0x{renderHash contentHash})"
+        IO.println "commit message に idchain-approve を含めること (例: docs(idchain): approve SP-047 [idchain-approve])"
+        return 0
+  | _ =>
+    IO.eprintln "usage: idchain approve <ID> --by <承認者> --note <判断根拠> --date <YYYY-MM-DD>"
+    return 2
+
+def runInitCommand (rest : List String) : IO UInt32 := do
+  match ← Idchain.Init.detectEngineRoot with
+  | none =>
+    IO.eprintln "idchain init: engine root を検出できない (engine または対象 repo の idchain/ から実行する)"
+    return 2
+  | some engineRoot =>
+    match rest with
+    | [target] => Idchain.Init.runInit engineRoot target false
+    | [target, "--update"] => Idchain.Init.runInit engineRoot target true
+    | _ =>
+      IO.eprintln "usage: idchain init <target-repo> [--update]"
+      return 2
+
 def run (registry : Registry) (args : List String) : IO UInt32 := do
   match args with
   | ["check"] => runCheck registry
   | ["export"] => runExport registry
   | ["crosscheck"] => runCrosscheck registry
+  | ["views"] => runViews registry false
+  | ["views", "--check"] => runViews registry true
+  | ["report", "--date", date] => runReport registry date
+  | "approve" :: rest => runApprove registry rest
+  | "init" :: rest => runInitCommand rest
   | _ => do
-    IO.eprintln "usage: idchain <check|export|crosscheck>   (views / report / approve / init は M1 実装中)"
+    IO.eprintln "usage: idchain <check|export|crosscheck|views [--check]|report --date <YYYY-MM-DD>|approve <ID> --by <承認者> --note <根拠> --date <日付>|init <target-repo> [--update]>"
     return 2
 
 end Idchain.Cli

@@ -1,5 +1,5 @@
 name = "idchain"
-defaultTargets = ["Idchain", "idchain", "tests"]
+defaultTargets = ["Idchain", "idchain-dev", "tests"]
 
 [[lean_lib]]
 name = "Idchain"
@@ -8,7 +8,7 @@ name = "Idchain"
 name = "Tests"
 
 [[lean_exe]]
-name = "idchain"
+name = "idchain-dev"
 root = "Main"
 
 [[lean_exe]]

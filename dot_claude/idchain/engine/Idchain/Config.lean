@@ -22,6 +22,7 @@ structure Config where
 private def getStringList (json : Lean.Json) (key : String) : Except String (List String) :=
   match json.getObjVal? key with
   | .error _ => .ok []
+  | .ok .null => .ok []
   | .ok value => do
     let entries ← value.getArr?
     entries.toList.mapM (·.getStr?)
@@ -29,6 +30,7 @@ private def getStringList (json : Lean.Json) (key : String) : Except String (Lis
 private def getOptionalString (json : Lean.Json) (key : String) : Except String (Option String) :=
   match json.getObjVal? key with
   | .error _ => .ok none
+  | .ok .null => .ok none
   | .ok value => do pure (some (← value.getStr?))
 
 def Config.parse (raw : String) : Except String Config := do
