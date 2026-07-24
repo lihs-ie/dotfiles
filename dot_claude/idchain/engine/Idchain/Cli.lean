@@ -9,6 +9,7 @@ import Idchain.Init
 import Idchain.Oracle
 import Idchain.Pairwise
 import Idchain.Bench
+import Idchain.Lint
 
 /-!
 # CLI (対象 repo の IdchainMain が呼ぶライブラリ層)
@@ -39,6 +40,9 @@ def runCheck (registry : Registry) : IO UInt32 := do
   let violations := registry.checkAll
   -- 編集ブロック hook が四層強制の一角として読む状態ファイル。exit code に関わらず毎回書く。
   IO.FS.writeFile ".gate-status.json" (gateStatusJson registry violations.length)
+  -- 曖昧語 lint (Must-25): 非ブロッキング WARNING。exit code には影響させない。
+  for (specId, warning) in lintSpecs registry do
+    IO.println s!"WARNING [ambiguous-term] {specId}: {warning}"
   if violations.isEmpty then
     IO.println "idchain check: 違反 0 件 (ID の鎖は閉じている)"
     return 0
@@ -211,7 +215,7 @@ def runReport (registry : Registry) (date : String) : IO UInt32 := do
       IO.FS.writeFile (directory / "verification-report.json")
         (renderReportJson date registry violations result oracleResult benchResult)
       let verdicts := specVerdicts registry result
-      let overall := overallPass violations result verdicts oracleResult benchResult
+      let overall := overallPass violations result verdicts oracleResult benchResult registry
       IO.println s!"idchain report: reports/{date}/ に生成 (総合判定: {if overall then "PASS" else "FAIL"})"
       return (if overall then 0 else 1)
 
@@ -239,6 +243,49 @@ def runApprove (registry : Registry) (args : List String) : IO UInt32 := do
         return 0
   | _ =>
     IO.eprintln "usage: idchain approve <ID> --by <承認者> --note <判断根拠> --date <YYYY-MM-DD>"
+    return 2
+
+private def parseVerdict (s : String) : Option Bool :=
+  match s with
+  | "pass" => some true
+  | "fail" => some false
+  | _ => none
+
+/-- 意味一致レビュー書込 (Must-24)。SP の現内容ハッシュを計算し `Canon/SemanticReviews.lean` を
+    全量再生成する (upsert = 同一 SP は置換)。 -/
+def runSemanticReview (registry : Registry) (args : List String) : IO UInt32 := do
+  match args with
+  | [target, "--by", reviewedBy, "--date", date, "--verdict", verdictString, "--findings", findings] =>
+    match SimpleIdentifier.parse target with
+    | none =>
+      IO.eprintln s!"idchain semantic-review: 不正な ID: {target}"
+      return 2
+    | some identifier =>
+      if identifier.kind != ArtifactKind.sp then
+        IO.eprintln s!"idchain semantic-review: 対象は SP でなければならない: {target}"
+        return 2
+      else
+        match registry.findSpec identifier.number with
+        | none =>
+          IO.eprintln s!"idchain semantic-review: 対象 {target} が正本に存在しない"
+          return 2
+        | some spec =>
+          match parseVerdict verdictString with
+          | none =>
+            IO.eprintln s!"idchain semantic-review: --verdict は pass|fail のいずれか (got {verdictString})"
+            return 2
+          | some verdict =>
+            if !(← ("Canon" : System.FilePath).pathExists) then
+              IO.eprintln "idchain semantic-review: Canon/ が存在しない (対象 repo の idchain/ から実行する)"
+              return 2
+            let contentHash := contentHashOf spec
+            let review : SemanticReview := { spec := identifier.number, reviewedBy, date, verdict, findings, contentHash }
+            IO.FS.writeFile ("Canon" / "SemanticReviews.lean")
+              (renderSemanticReviewsLean (upsertSemanticReview registry.semanticReviews review))
+            IO.println s!"idchain semantic-review: {target} のレビューを登録した (verdict={verdictString}, hash 0x{renderHash contentHash})"
+            return 0
+  | _ =>
+    IO.eprintln "usage: idchain semantic-review <SP-ID> --by <実施者> --date <YYYY-MM-DD> --verdict pass|fail --findings <指摘>"
     return 2
 
 /-- registry.oracleQueries の testCase が正本に存在し kind = .oracle であるかの整合検査 (警告のみ、check の違反種別は増やさない)。 -/
@@ -372,9 +419,10 @@ def run (registry : Registry) (args : List String) : IO UInt32 := do
   | ["pairwise"] => runPairwise registry
   | ["bench"] => runBench registry
   | "approve" :: rest => runApprove registry rest
+  | "semantic-review" :: rest => runSemanticReview registry rest
   | "init" :: rest => runInitCommand rest
   | _ => do
-    IO.eprintln "usage: idchain <check|export|crosscheck|views [--check]|report --date <YYYY-MM-DD>|oracle|pairwise|bench|approve <ID> --by <承認者> --note <根拠> --date <日付>|init <target-repo> [--update]>"
+    IO.eprintln "usage: idchain <check|export|crosscheck|views [--check]|report --date <YYYY-MM-DD>|oracle|pairwise|bench|approve <ID> --by <承認者> --note <根拠> --date <日付>|semantic-review <SP-ID> --by <実施者> --date <日付> --verdict pass|fail --findings <指摘>|init <target-repo> [--update]>"
     return 2
 
 end Idchain.Cli

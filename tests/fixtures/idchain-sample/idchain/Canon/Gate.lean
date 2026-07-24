@@ -1,5 +1,6 @@
 import Canon.Artifacts
 import Canon.Approvals
+import Canon.SemanticReviews
 
 /-! 無矛盾性ゲート: witness = 明細 [1,2,3]・小計 6。証明が閉じない限りビルド不能。 -/
 
@@ -20,6 +21,8 @@ def registry : Registry := {
   oracleQueries := oracleQueries
   factors := factors
   benchmarks := benchmarks
+  roadmapItems := roadmapItems
+  semanticReviews := semanticReviews
 }
 
 def gate : ConsistencyProof Model registry interpretations := {

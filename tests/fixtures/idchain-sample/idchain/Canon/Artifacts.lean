@@ -36,6 +36,10 @@ def learnings : List Learning := [
   ⟨1, "2026-07-24", some 1, "初回計測は仮説を支持"⟩
 ]
 
+def roadmapItems : List RoadmapItem := [
+  ⟨1, "集計エンジンの汎用化", .planned, 1, some 1, "discovery"⟩
+]
+
 def retired : List SimpleIdentifier := []
 
 -- M3: オラクル突合・ペアワイズ・ベンチマークの fixture。

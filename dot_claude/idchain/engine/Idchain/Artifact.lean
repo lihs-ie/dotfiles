@@ -70,6 +70,7 @@ inductive TestCaseKind where
   | example
   | property
   | oracle
+  | regression
   deriving Repr, DecidableEq, Inhabited
 
 /-- TC: テストケース。仕様から導出する (p.40: コードから作らせると実装追認テストになる)。 -/
@@ -105,6 +106,33 @@ structure Benchmark where
   command : String
   greenThresholdMilliseconds : Nat
   redThresholdMilliseconds : Nat
+  deriving Repr, DecidableEq, Inhabited
+
+inductive RoadmapItemStatus where
+  | planned
+  | inCycle
+  | done
+  | dropped
+  deriving Repr, DecidableEq, Inhabited
+
+/-- RM: ロードマップ項目 (発表 p.22/73)。dropped も削除禁止 (意思の痕跡)。 -/
+structure RoadmapItem where
+  number : Nat
+  title : String
+  status : RoadmapItemStatus
+  priority : Nat            -- 小さいほど先 (次に潰す順)
+  hypothesis : Option Nat   -- 関連 HY
+  source : String           -- 出典: "discovery" / "LL-001" / "bench:<ベンチ名>" 等
+  deriving Repr, DecidableEq, Inhabited
+
+/-- SP の意味一致レビュー (Must-24)。SP 内容ハッシュに束縛され、SP 文変更で失効。 -/
+structure SemanticReview where
+  spec : Nat
+  reviewedBy : String       -- 実施エージェント/モデル名
+  date : String
+  verdict : Bool            -- true = 多義性なし・invariant と一致
+  findings : String         -- 指摘 (verdict true でも「境界値明示を確認」等を書く)
+  contentHash : UInt64
   deriving Repr, DecidableEq, Inhabited
 
 end Idchain

@@ -15,6 +15,7 @@ def TestCaseKind.jsonString : TestCaseKind → String
   | .example => "example"
   | .property => "property"
   | .oracle => "oracle"
+  | .regression => "regression"
 
 def exportJson (registry : Registry) : String :=
   let testCases := registry.testCases.map fun testCase => Json.mkObj [

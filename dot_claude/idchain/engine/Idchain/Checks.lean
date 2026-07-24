@@ -27,6 +27,11 @@ inductive ViolationKind where
   | staleApproval
   | approvalTargetMissing
   | learningNotContiguous
+  | roadmapHypothesisMissing
+  | roadmapNotContiguous
+  | inCycleRoadmapUnapproved
+  | semanticReviewMissing
+  | semanticReviewStale
   deriving Repr, DecidableEq, Inhabited
 
 def ViolationKind.label : ViolationKind → String
@@ -44,6 +49,11 @@ def ViolationKind.label : ViolationKind → String
   | .staleApproval => "stale-approval"
   | .approvalTargetMissing => "approval-target-missing"
   | .learningNotContiguous => "learning-not-contiguous"
+  | .roadmapHypothesisMissing => "roadmap-hypothesis-missing"
+  | .roadmapNotContiguous => "roadmap-not-contiguous"
+  | .inCycleRoadmapUnapproved => "in-cycle-roadmap-unapproved"
+  | .semanticReviewMissing => "semantic-review-missing"
+  | .semanticReviewStale => "semantic-review-stale"
 
 structure Violation where
   kind : ViolationKind
@@ -65,6 +75,7 @@ private def numbersOf (registry : Registry) (kind : ArtifactKind) : List Nat :=
   | .hy => registry.hypotheses.map (·.number)
   | .sp => registry.specs.map (·.number)
   | .ll => registry.learnings.map (·.number)
+  | .rm => registry.roadmapItems.map (·.number)
 
 private def checkNumbers (registry : Registry) : List Violation :=
   (ArtifactKind.all.flatMap fun kind =>
@@ -152,12 +163,62 @@ private def checkLearnings (registry : Registry) : List Violation :=
     [violation .learningNotContiguous "LL"
       "学び台帳は 1..N の連番でなければならない (append-only、削除禁止)"]
 
+private def checkRoadmapHypotheses (registry : Registry) : List Violation :=
+  registry.roadmapItems.filterMap fun item =>
+    match item.hypothesis with
+    | none => none
+    | some hypothesisNumber =>
+      if (registry.findHypothesis hypothesisNumber).isNone then
+        some (violation .roadmapHypothesisMissing (SimpleIdentifier.render ⟨.rm, item.number⟩)
+          s!"関連する HY-{padNumber hypothesisNumber} が存在しない")
+      else none
+
+/-- RM 番号の連番充足 (LL と同じ方式)。dropped も含めて削除禁止なので、退役ではなく欠番として検出する。 -/
+private def checkRoadmapContiguous (registry : Registry) : List Violation :=
+  let numbers := registry.roadmapItems.map (·.number)
+  let expected := List.range' 1 numbers.length
+  if expected.all numbers.contains then []
+  else
+    [violation .roadmapNotContiguous "RM"
+      "ロードマップ項目は 1..N の連番でなければならない (dropped も削除禁止)"]
+
+private def checkInCycleRoadmapApproval (registry : Registry) : List Violation :=
+  registry.roadmapItems.filter
+      (fun item => item.status == RoadmapItemStatus.inCycle && !registry.isApproved ⟨.rm, item.number⟩)
+    |>.map fun item =>
+      violation .inCycleRoadmapUnapproved (SimpleIdentifier.render ⟨.rm, item.number⟩)
+        "inCycle 化には承認が必要 (fresh 承認なし)"
+
+/-- 承認済み SP の意味一致レビュー (Must-24)。起草中 SP には要求しない。stale は承認状態に関わらず検出する。 -/
+private def checkSemanticReviews (registry : Registry) : List Violation :=
+  let missing :=
+    (registry.specs.filter fun spec =>
+        registry.isApproved ⟨.sp, spec.number⟩ &&
+          !registry.semanticReviews.any fun review =>
+            review.spec == spec.number && review.verdict &&
+              review.contentHash == contentHashOf spec)
+      |>.map fun spec =>
+        violation .semanticReviewMissing (SimpleIdentifier.render ⟨.sp, spec.number⟩)
+          "承認済み仕様に fresh な意味一致レビュー (verdict 合格) がない"
+  let stale :=
+    registry.semanticReviews.filterMap fun review =>
+      match registry.findSpec review.spec with
+      | none => none
+      | some spec =>
+        if contentHashOf spec == review.contentHash then none
+        else
+          some (violation .semanticReviewStale (SimpleIdentifier.render ⟨.sp, review.spec⟩)
+            "SP 文変更により意味一致レビューが失効 (再レビューが必要)")
+  missing ++ stale
+
 /-- 全検査の実行。違反ゼロ = ID の鎖が閉じている。 -/
 def Registry.checkAll (registry : Registry) : List Violation :=
   checkNumbers registry ++ checkDuplicates registry ++ checkRetired registry ++
   checkValues registry ++ checkFeatureAreas registry ++ checkSpecs registry ++
   checkHypotheses registry ++ checkTestCases registry ++ checkOrphanSpecs registry ++
-  checkApprovals registry ++ checkLearnings registry
+  checkApprovals registry ++ checkLearnings registry ++
+  checkRoadmapHypotheses registry ++ checkRoadmapContiguous registry ++
+  checkInCycleRoadmapApproval registry ++ checkSemanticReviews registry
 
 def Registry.hasViolation (registry : Registry) (kind : ViolationKind) : Bool :=
   registry.checkAll.any (·.kind == kind)

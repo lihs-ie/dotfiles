@@ -26,7 +26,8 @@ def validRegistry : Registry := {
     ⟨⟨47, 2⟩, "明細0件 → 小計 = 0", .example⟩],
   learnings := [⟨1, "2026-07-24", some 1, "初回計測は仮説を支持"⟩],
   approvals := [approvedRecordFor spec47],
-  retired := []
+  retired := [],
+  semanticReviews := [⟨47, "lihs", "2026-07-24", true, "多義語なし・境界値明示済み・invariant と一致", contentHashOf spec47⟩]
 }
 
 def positiveCases : List TestResult := [
@@ -94,6 +95,58 @@ def negativeCases : List TestResult := [
       testCases := validRegistry.testCases ++ [⟨⟨47, 0⟩, "枝番0", .example⟩] } .invalidNumber)
 ]
 
+-- M5 (Must-24/29): RM・意味一致レビューのトレーサビリティ検査
+def approvedRoadmapRecordFor (item : RoadmapItem) : ApprovalRecord :=
+  ⟨⟨.rm, item.number⟩, approvalFor "lihs" "2026-07-24" "inCycle 化承認" item⟩
+
+def roadmapNegativeCases : List TestResult := [
+  check "RM.hypothesis に存在しない HY → roadmap-hypothesis-missing"
+    (has { validRegistry with
+      roadmapItems := [⟨1, "軽量化", .planned, 1, some 99, "discovery"⟩] } .roadmapHypothesisMissing),
+  check "RM.hypothesis が既存 HY を指せば違反ではない"
+    (!(has { validRegistry with
+      roadmapItems := [⟨1, "軽量化", .planned, 1, some 1, "discovery"⟩] } .roadmapHypothesisMissing)),
+  check "RM 番号欠番 (1,3) → roadmap-not-contiguous"
+    (has { validRegistry with
+      roadmapItems := [⟨1, "a", .planned, 1, none, "discovery"⟩, ⟨3, "b", .planned, 2, none, "discovery"⟩] }
+      .roadmapNotContiguous),
+  check "RM 番号連番 (1,2) は違反ではない"
+    (!(has { validRegistry with
+      roadmapItems := [⟨1, "a", .planned, 1, none, "discovery"⟩, ⟨2, "b", .planned, 2, none, "discovery"⟩] }
+      .roadmapNotContiguous)),
+  check "inCycle RM が未承認 → in-cycle-roadmap-unapproved"
+    (has { validRegistry with
+      roadmapItems := [⟨1, "着手中の項目", .inCycle, 1, none, "discovery"⟩] } .inCycleRoadmapUnapproved),
+  check "inCycle RM が fresh 承認済なら違反ではない"
+    (!(let item : RoadmapItem := ⟨1, "着手中の項目", .inCycle, 1, none, "discovery"⟩
+       has { validRegistry with
+        roadmapItems := [item], approvals := validRegistry.approvals ++ [approvedRoadmapRecordFor item] }
+        .inCycleRoadmapUnapproved)),
+  check "planned RM は未承認でも違反ではない (inCycle のみ承認必須)"
+    (!(has { validRegistry with
+      roadmapItems := [⟨1, "計画中の項目", .planned, 1, none, "discovery"⟩] } .inCycleRoadmapUnapproved)),
+  check "dropped も削除禁止 (RM は連番の一員として残る)"
+    (!(has { validRegistry with
+      roadmapItems := [⟨1, "見送り", .dropped, 1, none, "discovery"⟩] } .roadmapNotContiguous))
+]
+
+def semanticReviewNegativeCases : List TestResult := [
+  check "承認済 SP-047 に review なし → semantic-review-missing"
+    (has { validRegistry with semanticReviews := [] } .semanticReviewMissing),
+  check "review はあるが verdict=false → semantic-review-missing のまま"
+    (has { validRegistry with
+      semanticReviews := [⟨47, "lihs", "2026-07-24", false, "多義語あり", contentHashOf spec47⟩] }
+      .semanticReviewMissing),
+  check "review の contentHash が現内容と不一致 → semantic-review-stale"
+    (has { validRegistry with
+      semanticReviews := [⟨47, "lihs", "2026-07-24", true, "古いレビュー", 0x1⟩] } .semanticReviewStale),
+  checkEq "起草中 SP (未承認) は semantic-review-missing の対象にならない (0 件のまま)"
+    (({ validRegistry with specs := validRegistry.specs ++ [⟨48, "起草中", 1⟩] } : Registry).checkAll.filter
+      (·.kind == .semanticReviewMissing)).length 0,
+  check "fresh な review (verdict=true・hash一致) があれば違反ではない"
+    (!(has validRegistry .semanticReviewMissing) && !(has validRegistry .semanticReviewStale))
+]
+
 -- U6: 無矛盾性証明 API のコンパイル時実証
 -- 発表の例: 「小計は、明細の合計と常に一致する」を持つモデルで witness を構成する。
 structure LedgerModel where
@@ -121,6 +174,8 @@ def semanticsCases : List TestResult := [
 ]
 
 def suite : String × List TestResult :=
-  ("ChecksTests (U4/U5/U6)", positiveCases ++ negativeCases ++ semanticsCases)
+  ("ChecksTests (U4/U5/U6/M5)",
+    positiveCases ++ negativeCases ++ semanticsCases ++
+    roadmapNegativeCases ++ semanticReviewNegativeCases)
 
 end Idchain.Tests.ChecksTests

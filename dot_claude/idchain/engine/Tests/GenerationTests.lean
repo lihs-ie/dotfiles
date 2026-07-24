@@ -56,6 +56,27 @@ def ledgerCases : List TestResult := [
   check "学びの本文" (contains ledger "初回計測は仮説を支持")
 ]
 
+-- M5 (Must-29): roadmap.md ビュー
+def registryWithRoadmap : Registry :=
+  { validRegistry with
+    roadmapItems := [
+      ⟨2, "第二弾: バッチ処理最適化", .planned, 2, none, "discovery"⟩,
+      ⟨1, "第一弾: 集計エンジン刷新", .inCycle, 1, some 1, "discovery"⟩
+    ] }
+
+def roadmap := renderRoadmap registryWithRoadmap
+
+def roadmapCases : List TestResult := [
+  check "DO NOT EDIT ヘッダで始まる" (roadmap.startsWith viewHeader),
+  check "RM-001 と RM-002 が含まれる" (contains roadmap "RM-001" && contains roadmap "RM-002"),
+  check "題名が含まれる" (contains roadmap "第一弾: 集計エンジン刷新"),
+  check "関連 HY-001 が含まれる" (contains roadmap "HY-001"),
+  check "hypothesis なしは — 表示" (contains roadmap "—"),
+  check "出典 discovery が含まれる" (contains roadmap "discovery"),
+  check "優先度昇順: RM-001 (priority 1) が RM-002 (priority 2) より先に出現"
+    (((roadmap.splitOn "RM-001").headD "").length < ((roadmap.splitOn "RM-002").headD "").length)
+]
+
 -- U10: レポート
 def passResult : CrosscheckResult :=
   { orphanTests := [], unknownReferences := [], unimplementedTestCases := [],
@@ -148,6 +169,42 @@ def reportOracleBenchCases : List TestResult := [
      contains json "\"oracle\"" && contains json "\"bench\"")
 ]
 
+-- Must-28: RM 反映強制 (unreflectedBenchmarks + overallPass への組込)
+def benchYellow : BenchRunResult :=
+  { benchmarks := [⟨"重い処理", 500, .yellow⟩], worst := .yellow }
+
+def registryWithBenchRoadmap : Registry :=
+  { Registry.empty with roadmapItems := [⟨1, "改善", .planned, 1, none, "bench:重い処理"⟩] }
+
+def registryWithDroppedBenchRoadmap : Registry :=
+  { Registry.empty with roadmapItems := [⟨1, "見送り", .dropped, 1, none, "bench:重い処理"⟩] }
+
+def unreflectedBenchmarkCases : List TestResult := [
+  checkEq "yellow で対応 RM なし → 検出" (unreflectedBenchmarks Registry.empty benchYellow) ["重い処理"],
+  checkEq "yellow で対応 RM あり (source一致・非dropped) → 空"
+    (unreflectedBenchmarks registryWithBenchRoadmap benchYellow) [],
+  checkEq "green は RM なくても空" (unreflectedBenchmarks Registry.empty benchGreen) [],
+  checkEq "dropped RM のみ → 検出"
+    (unreflectedBenchmarks registryWithDroppedBenchRoadmap benchYellow) ["重い処理"]
+]
+
+def reportRoadmapReflectionCases : List TestResult := [
+  check "yellow bench + 対応 RM で overallPass 維持"
+    (overallPass [] passResult (specVerdicts validRegistry passResult) none (some benchYellow)
+      registryWithBenchRoadmap),
+  check "yellow bench + RM なしで overallPass FAIL"
+    (!(overallPass [] passResult (specVerdicts validRegistry passResult) none (some benchYellow)
+      validRegistry)),
+  check "未反映ベンチは report md に「未反映」が明記される"
+    (contains
+      (renderReportMarkdown "2026-07-24" validRegistry [] passResult none (some benchYellow))
+      "未反映"),
+  check "対応 RM があれば report md に「未反映」は出ない"
+    (!(contains
+      (renderReportMarkdown "2026-07-24" registryWithBenchRoadmap [] passResult none (some benchYellow))
+      "未反映"))
+]
+
 -- U11: 承認 codegen
 def sampleRecord : ApprovalRecord :=
   ⟨⟨.sp, 47⟩, approvalFor "lihs" "2026-07-24" "G2: \"形式検査\" パス" spec47⟩
@@ -171,6 +228,29 @@ def approveCases : List TestResult := [
       ⟨⟨.pb, 1⟩, approvalFor "lihs" "2026-07-25" "G1" spec47⟩).length) 2
 ]
 
+-- Must-24: 意味一致レビュー codegen
+def sampleReview : SemanticReview :=
+  ⟨47, "lihs", "2026-07-24", true, "多義語なし・\"境界値\"明示済み", contentHashOf spec47⟩
+
+def semanticReviewsLean := renderSemanticReviewsLean [sampleReview]
+
+def semanticReviewCases : List TestResult := [
+  check "namespace Canon" (contains semanticReviewsLean "namespace Canon"),
+  check "spec 番号 47" (contains semanticReviewsLean "spec := 47"),
+  check "verdict true" (contains semanticReviewsLean "verdict := true"),
+  check "findings がエスケープされる" (contains semanticReviewsLean "\\\"境界値\\\""),
+  check "ハッシュ 16 進リテラル"
+    (contains semanticReviewsLean s!"0x{renderHash sampleReview.contentHash}"),
+  check "手編集禁止の注記" (contains semanticReviewsLean "手編集禁止"),
+  check "空リストも整形" (contains (renderSemanticReviewsLean []) "[]"),
+  checkEq "upsert は同一 spec を置換"
+    ((upsertSemanticReview [sampleReview]
+      ⟨47, "lihs", "2026-07-25", true, "再レビュー", contentHashOf spec47⟩).length) 1,
+  checkEq "upsert は別 spec を追加"
+    ((upsertSemanticReview [sampleReview]
+      ⟨48, "lihs", "2026-07-25", true, "別仕様", 0⟩).length) 2
+]
+
 def configNullCases : List TestResult :=
   match Config.parse "{\"xunitPath\": null, \"testFileRoots\": null}" with
   | .error e => [check s!"null 耐性 parse 失敗: {e}" false]
@@ -180,9 +260,11 @@ def configNullCases : List TestResult :=
     ]
 
 def suite : String × List TestResult :=
-  ("GenerationTests (U9/U10/U11)",
+  ("GenerationTests (U9/U10/U11/M5)",
     viewCommonCases ++ whyWhatCases ++ specificationCases ++ testDesignCases ++ ledgerCases ++
+    roadmapCases ++
     verdictCases ++ verdictWithOracleCases ++ reportCases ++ reportOracleBenchCases ++
-    approveCases ++ configNullCases)
+    unreflectedBenchmarkCases ++ reportRoadmapReflectionCases ++
+    approveCases ++ semanticReviewCases ++ configNullCases)
 
 end Idchain.Tests.GenerationTests

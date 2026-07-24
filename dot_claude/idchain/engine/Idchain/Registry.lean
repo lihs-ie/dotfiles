@@ -26,6 +26,10 @@ structure Registry where
   factors : List Factor := []
   /-- ベンチマーク定義一覧 (M3)。既定は空。 -/
   benchmarks : List Benchmark := []
+  /-- ロードマップ項目一覧 (M5、8 種目のアーティファクト)。既定は空。 -/
+  roadmapItems : List RoadmapItem := []
+  /-- SP の意味一致レビュー一覧 (M5, Must-24)。既定は空。 -/
+  semanticReviews : List SemanticReview := []
   deriving Repr, Inhabited
 
 def Registry.empty : Registry :=
@@ -50,6 +54,9 @@ def Registry.findSpec (registry : Registry) (number : Nat) : Option Spec :=
 def Registry.findLearning (registry : Registry) (number : Nat) : Option Learning :=
   registry.learnings.find? (·.number == number)
 
+def Registry.findRoadmapItem (registry : Registry) (number : Nat) : Option RoadmapItem :=
+  registry.roadmapItems.find? (·.number == number)
+
 /-- 対象 ID の現内容ハッシュ (承認鮮度検査用)。 -/
 def Registry.contentHashFor (registry : Registry) (identifier : SimpleIdentifier) : Option UInt64 :=
   match identifier.kind with
@@ -59,6 +66,7 @@ def Registry.contentHashFor (registry : Registry) (identifier : SimpleIdentifier
   | .hy => (registry.findHypothesis identifier.number).map contentHashOf
   | .sp => (registry.findSpec identifier.number).map contentHashOf
   | .ll => (registry.findLearning identifier.number).map contentHashOf
+  | .rm => (registry.findRoadmapItem identifier.number).map contentHashOf
 
 /-- fresh な承認 (ハッシュが現内容と一致) を持つか。 -/
 def Registry.isApproved (registry : Registry) (identifier : SimpleIdentifier) : Bool :=

@@ -1,5 +1,6 @@
 import Canon.Artifacts
 import Canon.Approvals
+import Canon.SemanticReviews
 
 /-! 無矛盾性ゲート (負例 fixture): 全 SP の解釈を trivially 満たすだけの witness。 -/
 
@@ -19,6 +20,8 @@ def registry : Registry := {
   retired := retired
   oracleQueries := oracleQueries
   benchmarks := benchmarks
+  roadmapItems := roadmapItems
+  semanticReviews := semanticReviews
 }
 
 def gate : ConsistencyProof Model registry interpretations := {

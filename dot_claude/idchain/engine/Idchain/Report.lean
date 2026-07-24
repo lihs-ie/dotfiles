@@ -59,11 +59,28 @@ private def benchOk (benchResult : Option BenchRunResult) : Bool :=
   | none => true
   | some result => result.worst != .red
 
+/-- 赤/黄判定のベンチマークに対応する RM (出典 `bench:<名前>`、status ≠ dropped) が
+    registry に存在しない場合、そのベンチマーク名を返す (Must-28「反映の省略は禁止」の機械化)。
+    green のベンチマークは RM を要求しない。 -/
+def unreflectedBenchmarks (registry : Registry) (bench : BenchRunResult) : List String :=
+  (bench.benchmarks.filter (·.judgement != .green)).filterMap fun result =>
+    if registry.roadmapItems.any
+        (fun item => item.source == s!"bench:{result.name}" && item.status != .dropped)
+    then none
+    else some result.name
+
+/-- 赤/黄ベンチマークに対応する RM が欠けていないか (実施済のときのみ判定。未実施は影響なし)。 -/
+private def roadmapReflectionOk (registry : Registry) (benchResult : Option BenchRunResult) : Bool :=
+  match benchResult with
+  | none => true
+  | some result => (unreflectedBenchmarks registry result).isEmpty
+
 def overallPass (violations : List Violation) (result : CrosscheckResult)
     (verdicts : List SpecVerdict) (oracleResult : Option OracleRunResult := none)
-    (benchResult : Option BenchRunResult := none) : Bool :=
+    (benchResult : Option BenchRunResult := none) (registry : Registry := Registry.empty) : Bool :=
   violations.isEmpty && result.isClean && result.failedTestCases.isEmpty &&
-  verdicts.all (·.passed) && oracleOk oracleResult && benchOk benchResult
+  verdicts.all (·.passed) && oracleOk oracleResult && benchOk benchResult &&
+  roadmapReflectionOk registry benchResult
 
 /-- 「## オラクル突合」セクション。未実施は「未実施」とだけ記載する (graceful skip)。 -/
 private def renderOracleSection (oracleResult : Option OracleRunResult) : List String :=
@@ -77,23 +94,31 @@ private def renderOracleSection (oracleResult : Option OracleRunResult) : List S
      s!"- 総合判定: {if result.allAgreed then "全クエリ一致" else "不一致あり"}", "",
      "| クエリ | 判定 | 各エンジン出力 |", "|---|---|---|"] ++ rows ++ [""]
 
-/-- 「## ベンチマーク」セクション。未実施は「未実施」とだけ記載する (graceful skip)。 -/
-private def renderBenchSection (benchResult : Option BenchRunResult) : List String :=
+/-- 「## ベンチマーク」セクション。未実施は「未実施」とだけ記載する (graceful skip)。
+    赤/黄判定で対応 RM が欠けているベンチマークは「未反映」を明記する (Must-28)。 -/
+private def renderBenchSection (registry : Registry) (benchResult : Option BenchRunResult) :
+    List String :=
   match benchResult with
   | none => ["## ベンチマーク", "", "未実施", ""]
   | some result =>
+    let unreflected := unreflectedBenchmarks registry result
     let rows := result.benchmarks.map fun benchmarkResult =>
-      s!"| {benchmarkResult.name} | {benchmarkResult.milliseconds}ms | {benchmarkResult.judgement.label} |"
+      let reflectionNote :=
+        if unreflected.contains benchmarkResult.name then " ⚠ 未反映"
+        else ""
+      s!"| {benchmarkResult.name} | {benchmarkResult.milliseconds}ms | {benchmarkResult.judgement.label}{reflectionNote} |"
     ["## ベンチマーク", "",
-     s!"- 総合判定: {result.worst.label}", "",
-     "| ベンチマーク | 計測値 | 判定 |", "|---|---|---|"] ++ rows ++ [""]
+     s!"- 総合判定: {result.worst.label}", ""] ++
+    (if unreflected.isEmpty then []
+     else [s!"- 未反映: {String.intercalate "、" unreflected} (対応する RM が registry に存在しない。source = \"bench:<名前>\" の RM を追加すること)", ""]) ++
+    ["| ベンチマーク | 計測値 | 判定 |", "|---|---|---|"] ++ rows ++ [""]
 
 def renderReportMarkdown (date : String) (registry : Registry)
     (violations : List Violation) (result : CrosscheckResult)
     (oracleResult : Option OracleRunResult := none)
     (benchResult : Option BenchRunResult := none) : String :=
   let verdicts := specVerdicts registry result
-  let overall := overallPass violations result verdicts oracleResult benchResult
+  let overall := overallPass violations result verdicts oracleResult benchResult registry
   let verdictRows := verdicts.map fun verdict =>
     let mark := if verdict.passed then "PASS ✓" else "FAIL ✗"
     let testCaseCells := verdict.testCases.map fun testCase =>
@@ -115,7 +140,7 @@ def renderReportMarkdown (date : String) (registry : Registry)
      "## 仕様別判定", "",
      "| 仕様 | 判定 | テストケース |", "|---|---|---|"] ++ verdictRows ++
     ["", "## 違反一覧", ""] ++ violationLines ++
-    [""] ++ renderOracleSection oracleResult ++ renderBenchSection benchResult)
+    [""] ++ renderOracleSection oracleResult ++ renderBenchSection registry benchResult)
 
 open Lean (Json) in
 private def oracleResultJson (oracleResult : Option OracleRunResult) : Json :=
@@ -149,7 +174,7 @@ def renderReportJson (date : String) (registry : Registry)
   (Json.mkObj [
     ("date", Json.str date),
     ("overall", Json.str
-      (if overallPass violations result verdicts oracleResult benchResult then "PASS" else "FAIL")),
+      (if overallPass violations result verdicts oracleResult benchResult registry then "PASS" else "FAIL")),
     ("unchainedSpecs", Json.num ⟨(unchainedSpecCount verdicts : Int), 0⟩),
     ("orphanTests", Json.num ⟨(result.orphanTests.length : Int), 0⟩),
     ("oracle", oracleResultJson oracleResult),

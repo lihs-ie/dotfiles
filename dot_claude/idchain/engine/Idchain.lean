@@ -6,3 +6,4 @@ import Idchain.Approval
 import Idchain.Registry
 import Idchain.Checks
 import Idchain.Semantics
+import Idchain.ModelTypes

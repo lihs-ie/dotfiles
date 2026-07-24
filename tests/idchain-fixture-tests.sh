@@ -107,6 +107,28 @@ assert_contains "idchain-sample: report md に「仕様に紐づいていない�
   "$sample_report_content" "仕様に紐づいていないテスト: 0 件"
 
 # ------------------------------------------------------------
+# M5 (Must-29): roadmap.md が views に生成される
+# ------------------------------------------------------------
+
+sample_roadmap_view="$SAMPLE_DIR/views/roadmap.md"
+if [ -f "$sample_roadmap_view" ]; then
+  sample_roadmap_content="$(cat "$sample_roadmap_view")"
+else
+  sample_roadmap_content=""
+fi
+
+if [ -f "$sample_roadmap_view" ]; then
+  echo "PASSED: idchain-sample: views/roadmap.md が生成される"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: idchain-sample: views/roadmap.md が生成される"
+  fail_count=$((fail_count + 1))
+fi
+
+assert_contains "idchain-sample: views/roadmap.md に RM-001 を含む" \
+  "$sample_roadmap_content" "RM-001"
+
+# ------------------------------------------------------------
 # M3 付帯機構: 正例 (pairwise/oracle/bench はすべて green)
 # ------------------------------------------------------------
 
@@ -151,13 +173,17 @@ else
   fail_count=$((fail_count + 1))
 fi
 
-# check の 5 違反ラベル: 1 ラベルにつき 1 テストケース
+# check の 9 違反ラベル (M1 の 5 種 + M5 の 4 種): 1 ラベルにつき 1 テストケース
 for label in \
   "orphan-spec" \
   "test-case-for-unapproved-spec" \
   "stale-approval" \
   "retired-identifier-reuse" \
-  "learning-not-contiguous"
+  "learning-not-contiguous" \
+  "roadmap-not-contiguous" \
+  "in-cycle-roadmap-unapproved" \
+  "semantic-review-missing" \
+  "semantic-review-stale"
 do
   assert_contains "idchain-broken: check 出力に [$label] を含む" \
     "$broken_check_output" "[$label]"
@@ -170,8 +196,8 @@ else
   broken_gate_status_content=""
 fi
 
-assert_contains "idchain-broken: .gate-status.json に \"violations\": 5 を含む" \
-  "$broken_gate_status_content" "\"violations\": 5"
+assert_contains "idchain-broken: .gate-status.json に \"violations\": 9 を含む" \
+  "$broken_gate_status_content" "\"violations\": 9"
 
 broken_crosscheck_exit=0
 broken_crosscheck_output="$(cd "$BROKEN_DIR" && lake exe idchain crosscheck 2>&1)" || broken_crosscheck_exit=$?
@@ -218,6 +244,38 @@ else
   echo "FAILED: idchain-broken: bench exit 1 (got $broken_bench_exit)"
   fail_count=$((fail_count + 1))
 fi
+
+# ------------------------------------------------------------
+# M5 (Must-28): report が bench 赤判定に対応する RM の不在を検出して FAIL にする
+# (bench を先に実行して bench-results.json を最新化してから report を走らせる)。
+# ------------------------------------------------------------
+
+broken_report_exit=0
+(cd "$BROKEN_DIR" && lake exe idchain report --date 2026-01-01) >/dev/null 2>&1 || broken_report_exit=$?
+
+if [ "$broken_report_exit" -eq 1 ]; then
+  echo "PASSED: idchain-broken: report exit 1 (FAIL)"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: idchain-broken: report exit 1 (got $broken_report_exit)"
+  fail_count=$((fail_count + 1))
+fi
+
+broken_report_md="$BROKEN_DIR/reports/2026-01-01/verification-report.md"
+if [ -f "$broken_report_md" ]; then
+  broken_report_content="$(cat "$broken_report_md")"
+else
+  broken_report_content=""
+fi
+
+assert_contains "idchain-broken: report md の総合判定が FAIL" \
+  "$broken_report_content" "## 総合判定: FAIL"
+
+assert_contains "idchain-broken: report md のベンチセクションに「未反映」を含む" \
+  "$broken_report_content" "未反映"
+
+assert_contains "idchain-broken: report md の未反映ベンチ名 (重い処理) を含む" \
+  "$broken_report_content" "重い処理"
 
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"

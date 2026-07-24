@@ -43,6 +43,7 @@ def idchainJsonTemplate : String :=
 def canonRootTemplate : String :=
 "import Canon.Artifacts
 import Canon.Approvals
+import Canon.SemanticReviews
 import Canon.Gate
 "
 
@@ -74,6 +75,8 @@ def testCases : List TestCase := []
 
 def learnings : List Learning := []
 
+def roadmapItems : List RoadmapItem := []
+
 def retired : List SimpleIdentifier := []
 
 /-- プロジェクトの状態モデル。SP の不変条件はこの型の上で書く。 -/
@@ -89,6 +92,7 @@ end Canon
 def gateTemplate : String :=
 "import Canon.Artifacts
 import Canon.Approvals
+import Canon.SemanticReviews
 
 /-!
 # 無矛盾性ゲート
@@ -112,6 +116,8 @@ def registry : Registry := {
   learnings := learnings
   approvals := approvals
   retired := retired
+  roadmapItems := roadmapItems
+  semanticReviews := semanticReviews
 }
 
 /-- 無矛盾性 = 全 SP の不変条件を同時に満たす witness の存在。 -/
@@ -229,6 +235,7 @@ def runInit (engineRoot : System.FilePath) (targetRepo : String) (update : Bool)
   writeIfAbsent (idchainDirectory / "Canon.lean") canonRootTemplate
   writeIfAbsent (idchainDirectory / "Canon" / "Artifacts.lean") artifactsTemplate
   writeIfAbsent (idchainDirectory / "Canon" / "Approvals.lean") (renderApprovalsLean [])
+  writeIfAbsent (idchainDirectory / "Canon" / "SemanticReviews.lean") (renderSemanticReviewsLean [])
   writeIfAbsent (idchainDirectory / "Canon" / "Gate.lean") gateTemplate
   writeIfAbsent (idchainDirectory / "IdchainMain.lean") idchainMainTemplate
   writeIfAbsent (idchainDirectory / "hooks" / "pre-commit") preCommitTemplate

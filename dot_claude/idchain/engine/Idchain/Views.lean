@@ -115,12 +115,31 @@ def renderLedger (registry : Registry) : String :=
     ["# 学び台帳", "", "外れた仮説も消さずに記録する (append-only)。", "",
      "| ID | 日付 | 関連仮説 | 学び |", "|---|---|---|---|"] ++ rows)
 
+def roadmapStatusLabel : RoadmapItemStatus → String
+  | .planned => "計画中"
+  | .inCycle => "着手中"
+  | .done => "完了"
+  | .dropped => "見送り"
+
+/-- RM を priority 昇順で表示する (dropped も削除禁止のため一覧に残る)。 -/
+def renderRoadmap (registry : Registry) : String :=
+  let sorted := registry.roadmapItems.mergeSort (fun a b => a.priority ≤ b.priority)
+  let rows := sorted.map fun item =>
+    let hypothesis := match item.hypothesis with
+      | some number => SimpleIdentifier.render ⟨.hy, number⟩
+      | none => "—"
+    s!"| {SimpleIdentifier.render ⟨.rm, item.number⟩} | {item.title} | {roadmapStatusLabel item.status} | {item.priority} | {hypothesis} | {item.source} |"
+  viewHeader ++ joinLines (
+    ["# ロードマップ", "", "優先度 (priority) が小さいほど次に潰す順。dropped も削除せず残す (意思の痕跡)。", "",
+     "| ID | 題名 | 状態 | 優先度 | 関連HY | 出典 |", "|---|---|---|---|---|---|"] ++ rows)
+
 /-- 生成対象の全ビュー (ファイル名 × 内容)。 -/
 def views (registry : Registry) : List (String × String) := [
   ("why-what.md", renderWhyWhat registry),
   ("specification.md", renderSpecification registry),
   ("test-design.md", renderTestDesign registry),
-  ("ledger.md", renderLedger registry)
+  ("ledger.md", renderLedger registry),
+  ("roadmap.md", renderRoadmap registry)
 ]
 
 end Idchain

@@ -34,6 +34,13 @@ def learnings : List Learning := [
   ⟨3, "2026-07-24", none, "LL-002 が欠番 (append-only 違反の負例)"⟩
 ]
 
+-- M5 負例: RM-002 が欠番 (roadmap-not-contiguous) + RM-003 は inCycle だが未承認
+-- (in-cycle-roadmap-unapproved)。
+def roadmapItems : List RoadmapItem := [
+  ⟨1, "軽量化", .planned, 1, none, "discovery"⟩,
+  ⟨3, "新エンジン展開", .inCycle, 2, none, "discovery"⟩
+]
+
 def retired : List SimpleIdentifier := [⟨.fa, 1⟩]
 
 -- M3 負例: oracle 不一致 (engine 間で出力が食い違う) + bench 赤判定。

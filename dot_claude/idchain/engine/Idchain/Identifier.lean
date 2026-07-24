@@ -16,6 +16,7 @@ inductive ArtifactKind where
   | hy
   | sp
   | ll
+  | rm
   deriving Repr, DecidableEq, Hashable, Inhabited
 
 def ArtifactKind.prefixString : ArtifactKind → String
@@ -25,8 +26,9 @@ def ArtifactKind.prefixString : ArtifactKind → String
   | .hy => "HY"
   | .sp => "SP"
   | .ll => "LL"
+  | .rm => "RM"
 
-def ArtifactKind.all : List ArtifactKind := [.pb, .vl, .fa, .hy, .sp, .ll]
+def ArtifactKind.all : List ArtifactKind := [.pb, .vl, .fa, .hy, .sp, .ll, .rm]
 
 def ArtifactKind.ofPrefix? (s : String) : Option ArtifactKind :=
   ArtifactKind.all.find? (·.prefixString == s)

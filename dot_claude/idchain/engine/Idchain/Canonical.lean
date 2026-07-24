@@ -62,6 +62,7 @@ def TestCaseKind.canonicalString : TestCaseKind → String
   | .example => "example"
   | .property => "property"
   | .oracle => "oracle"
+  | .regression => "regression"
 
 instance : Canonical TestCase where
   canonical tc :=
@@ -72,6 +73,18 @@ instance : Canonical Learning where
   canonical ll :=
     canonicalJoin ["LL", toString ll.number, ll.date,
       (ll.hypothesis.map toString).getD "", ll.outcome]
+
+def RoadmapItemStatus.canonicalString : RoadmapItemStatus → String
+  | .planned => "planned"
+  | .inCycle => "inCycle"
+  | .done => "done"
+  | .dropped => "dropped"
+
+/-- RM は承認対象 (inCycle 化に承認必須のため)。 -/
+instance : Canonical RoadmapItem where
+  canonical rm :=
+    canonicalJoin ["RM", toString rm.number, rm.title, rm.status.canonicalString,
+      toString rm.priority, (rm.hypothesis.map toString).getD "", rm.source]
 
 /-- 内容ハッシュ (承認束縛の対象)。 -/
 def contentHashOf [Canonical α] (content : α) : UInt64 :=

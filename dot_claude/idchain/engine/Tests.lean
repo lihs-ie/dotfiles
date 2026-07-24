@@ -8,3 +8,5 @@ import Tests.OracleTests
 import Tests.PairwiseTests
 import Tests.BenchTests
 import Tests.CliTests
+import Tests.ModelTypesTests
+import Tests.LintTests
