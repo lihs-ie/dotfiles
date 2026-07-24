@@ -1,14 +1,14 @@
 /-!
 # idchain ID 体系
 
-統一プレフィックス族 PB/VL/FA/HY/SP/LL (SimpleId) + TC (TestCaseId、親 SP 番号を型として保持)。
+統一プレフィックス族 PB/VL/FA/HY/SP/LL (SimpleIdentifier) + TC (TestCaseIdentifier、親 SP 番号を型として保持)。
 表記: ゼロ埋め 3 桁 (`SP-047`)、1000 以上はそのまま (`SP-1047`)。TC は `TC-<SP番号>-<枝番>`。
 parse は renderer の像のみ受理する (往復同一性が定義から成立)。
 -/
 
 namespace Idchain
 
-/-- アーティファクト種別 (TC は複合 ID のため `TestCaseId` として別型)。 -/
+/-- アーティファクト種別 (TC は複合 ID のため `TestCaseIdentifier` として別型)。 -/
 inductive ArtifactKind where
   | pb
   | vl
@@ -32,21 +32,21 @@ def ArtifactKind.ofPrefix? (s : String) : Option ArtifactKind :=
   ArtifactKind.all.find? (·.prefixString == s)
 
 /-- PB/VL/FA/HY/SP/LL の単純 ID。 -/
-structure SimpleId where
+structure SimpleIdentifier where
   kind : ArtifactKind
   number : Nat
   deriving Repr, DecidableEq, Hashable, Inhabited
 
 /-- テストケース ID `TC-<SP番号>-<枝番>`。導出元 SP 番号を構造として持つ。 -/
-structure TestCaseId where
+structure TestCaseIdentifier where
   spec : Nat
   branch : Nat
   deriving Repr, DecidableEq, Hashable, Inhabited
 
 /-- 全 ID の直和。 -/
-inductive AnyId where
-  | simple (id : SimpleId)
-  | testCase (id : TestCaseId)
+inductive AnyIdentifier where
+  | simple (identifier : SimpleIdentifier)
+  | testCase (identifier : TestCaseIdentifier)
   deriving Repr, DecidableEq, Hashable, Inhabited
 
 /-- 3 桁ゼロ埋め (1000 以上はそのまま)。 -/
@@ -55,15 +55,15 @@ def padNumber (n : Nat) : String :=
   if s.length >= 3 then s
   else String.ofList (List.replicate (3 - s.length) '0') ++ s
 
-def SimpleId.render (id : SimpleId) : String :=
-  s!"{id.kind.prefixString}-{padNumber id.number}"
+def SimpleIdentifier.render (identifier : SimpleIdentifier) : String :=
+  s!"{identifier.kind.prefixString}-{padNumber identifier.number}"
 
-def TestCaseId.render (id : TestCaseId) : String :=
-  s!"TC-{padNumber id.spec}-{id.branch}"
+def TestCaseIdentifier.render (identifier : TestCaseIdentifier) : String :=
+  s!"TC-{padNumber identifier.spec}-{identifier.branch}"
 
-def AnyId.render : AnyId → String
-  | .simple id => id.render
-  | .testCase id => id.render
+def AnyIdentifier.render : AnyIdentifier → String
+  | .simple identifier => identifier.render
+  | .testCase identifier => identifier.render
 
 /-- `padNumber` の像のみ受理する strict な数値パース (冗長ゼロ埋めは `none`)。 -/
 def parsePaddedNumber (s : String) : Option Nat := do
@@ -77,7 +77,7 @@ def parseBareNumber (s : String) : Option Nat := do
   guard (s == toString n)
   pure n
 
-def SimpleId.parse (s : String) : Option SimpleId :=
+def SimpleIdentifier.parse (s : String) : Option SimpleIdentifier :=
   match s.splitOn "-" with
   | [prefixPart, numberPart] => do
     let kind ← ArtifactKind.ofPrefix? prefixPart
@@ -85,7 +85,7 @@ def SimpleId.parse (s : String) : Option SimpleId :=
     pure ⟨kind, number⟩
   | _ => none
 
-def TestCaseId.parse (s : String) : Option TestCaseId :=
+def TestCaseIdentifier.parse (s : String) : Option TestCaseIdentifier :=
   match s.splitOn "-" with
   | ["TC", specPart, branchPart] => do
     let spec ← parsePaddedNumber specPart
@@ -93,15 +93,15 @@ def TestCaseId.parse (s : String) : Option TestCaseId :=
     pure ⟨spec, branch⟩
   | _ => none
 
-def AnyId.parse (s : String) : Option AnyId :=
-  (SimpleId.parse s).map .simple <|> (TestCaseId.parse s).map .testCase
+def AnyIdentifier.parse (s : String) : Option AnyIdentifier :=
+  (SimpleIdentifier.parse s).map .simple <|> (TestCaseIdentifier.parse s).map .testCase
 
 -- コンパイル時ロック (代表例)
-#guard SimpleId.render ⟨.sp, 47⟩ == "SP-047"
-#guard TestCaseId.render ⟨47, 1⟩ == "TC-047-1"
-#guard SimpleId.parse "SP-047" == some ⟨.sp, 47⟩
-#guard SimpleId.parse "SP-47" == (none : Option SimpleId)
-#guard TestCaseId.parse "TC-047-12" == some ⟨47, 12⟩
-#guard AnyId.parse "TC-047-2" == some (.testCase ⟨47, 2⟩)
+#guard SimpleIdentifier.render ⟨.sp, 47⟩ == "SP-047"
+#guard TestCaseIdentifier.render ⟨47, 1⟩ == "TC-047-1"
+#guard SimpleIdentifier.parse "SP-047" == some ⟨.sp, 47⟩
+#guard SimpleIdentifier.parse "SP-47" == (none : Option SimpleIdentifier)
+#guard TestCaseIdentifier.parse "TC-047-12" == some ⟨47, 12⟩
+#guard AnyIdentifier.parse "TC-047-2" == some (.testCase ⟨47, 2⟩)
 
 end Idchain

@@ -1,2 +1,2 @@
 import Tests.Framework
-import Tests.IdTests
+import Tests.IdentifierTests

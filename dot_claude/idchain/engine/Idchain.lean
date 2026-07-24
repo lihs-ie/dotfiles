@@ -1,1 +1,1 @@
-import Idchain.Id
+import Idchain.Identifier
