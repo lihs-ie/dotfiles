@@ -1,0 +1,16 @@
+{
+  "_comment": "idchain: Must-22 (docs/specs/idchain.md M4)。~/.claude/settings.json の hooks.PreToolUse 配列に追記する断片。既存 hooks.PreToolUse 配列がある場合は要素を追記 (置換しない)。idchain/idchain.json を持つ repo でのみ発火し、それ以外の repo では常に allow (誤爆しない)。",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/idchain/hooks/idchain-edit-guard.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

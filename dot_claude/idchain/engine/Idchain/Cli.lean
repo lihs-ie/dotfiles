@@ -26,8 +26,19 @@ open Idchain
 def renderViolation (violation : Violation) : String :=
   s!"VIOLATION [{violation.kind.label}] {violation.identifier}: {violation.message}"
 
+/-- 編集ブロック hook (Must-22) が読む `.gate-status.json` の内容。
+    フラットな 1 キー 1 行固定フォーマット (bash の grep で読むため整形を変えない)。 -/
+def gateStatusJson (registry : Registry) (violationCount : Nat) : String :=
+  let totalSpecs := registry.specs.length
+  let approvedFreshSpecs :=
+    (registry.specs.filter (fun spec => registry.isApproved ⟨.sp, spec.number⟩)).length
+  let unapprovedSpecs := totalSpecs - approvedFreshSpecs
+  s!"\{\n  \"approvedFreshSpecs\": {approvedFreshSpecs},\n  \"unapprovedSpecs\": {unapprovedSpecs},\n  \"violations\": {violationCount}\n}\n"
+
 def runCheck (registry : Registry) : IO UInt32 := do
   let violations := registry.checkAll
+  -- 編集ブロック hook が四層強制の一角として読む状態ファイル。exit code に関わらず毎回書く。
+  IO.FS.writeFile ".gate-status.json" (gateStatusJson registry violations.length)
   if violations.isEmpty then
     IO.println "idchain check: 違反 0 件 (ID の鎖は閉じている)"
     return 0

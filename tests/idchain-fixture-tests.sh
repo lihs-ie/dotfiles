@@ -68,6 +68,27 @@ run_test "idchain-sample: crosscheck (違反 0 件)" \
   "(cd $SAMPLE_DIR && lake exe idchain crosscheck)" \
   0
 
+sample_gate_status_file="$SAMPLE_DIR/.gate-status.json"
+if [ -f "$sample_gate_status_file" ]; then
+  sample_gate_status_content="$(cat "$sample_gate_status_file")"
+else
+  sample_gate_status_content=""
+fi
+
+if [ -f "$sample_gate_status_file" ]; then
+  echo "PASSED: idchain-sample: check 実行後に .gate-status.json が存在する"
+  pass_count=$((pass_count + 1))
+else
+  echo "FAILED: idchain-sample: check 実行後に .gate-status.json が存在する"
+  fail_count=$((fail_count + 1))
+fi
+
+assert_contains "idchain-sample: .gate-status.json に \"approvedFreshSpecs\": 1 を含む" \
+  "$sample_gate_status_content" "\"approvedFreshSpecs\": 1"
+
+assert_contains "idchain-sample: .gate-status.json に \"unapprovedSpecs\": 0 を含む" \
+  "$sample_gate_status_content" "\"unapprovedSpecs\": 0"
+
 run_test "idchain-sample: report --date 2026-01-01" \
   "(cd $SAMPLE_DIR && lake exe idchain report --date 2026-01-01)" \
   0
@@ -141,6 +162,16 @@ do
   assert_contains "idchain-broken: check 出力に [$label] を含む" \
     "$broken_check_output" "[$label]"
 done
+
+broken_gate_status_file="$BROKEN_DIR/.gate-status.json"
+if [ -f "$broken_gate_status_file" ]; then
+  broken_gate_status_content="$(cat "$broken_gate_status_file")"
+else
+  broken_gate_status_content=""
+fi
+
+assert_contains "idchain-broken: .gate-status.json に \"violations\": 5 を含む" \
+  "$broken_gate_status_content" "\"violations\": 5"
 
 broken_crosscheck_exit=0
 broken_crosscheck_output="$(cd "$BROKEN_DIR" && lake exe idchain crosscheck 2>&1)" || broken_crosscheck_exit=$?

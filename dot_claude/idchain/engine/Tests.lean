@@ -7,3 +7,4 @@ import Tests.GenerationTests
 import Tests.OracleTests
 import Tests.PairwiseTests
 import Tests.BenchTests
+import Tests.CliTests

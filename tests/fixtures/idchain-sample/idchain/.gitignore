@@ -2,3 +2,4 @@
 reports/
 oracle-results.json
 bench-results.json
+.gate-status.json
