@@ -2,5 +2,6 @@ import Tests
 
 def main : IO UInt32 :=
   Idchain.Tests.runAll [
-    Idchain.Tests.IdentifierTests.suite
+    Idchain.Tests.IdentifierTests.suite,
+    Idchain.Tests.ArtifactTests.suite
   ]
