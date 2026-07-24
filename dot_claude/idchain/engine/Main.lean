@@ -1,5 +1,5 @@
 import Idchain
+import Idchain.Cli
 
-def main (_args : List String) : IO UInt32 := do
-  IO.eprintln "idchain: サブコマンド未実装 (M1 実装中)"
-  return 2
+def main (args : List String) : IO UInt32 :=
+  Idchain.Cli.run Idchain.Registry.empty args
