@@ -1,0 +1,107 @@
+/-!
+# idchain ID 体系
+
+統一プレフィックス族 PB/VL/FA/HY/SP/LL (SimpleId) + TC (TestCaseId、親 SP 番号を型として保持)。
+表記: ゼロ埋め 3 桁 (`SP-047`)、1000 以上はそのまま (`SP-1047`)。TC は `TC-<SP番号>-<枝番>`。
+parse は renderer の像のみ受理する (往復同一性が定義から成立)。
+-/
+
+namespace Idchain
+
+/-- アーティファクト種別 (TC は複合 ID のため `TestCaseId` として別型)。 -/
+inductive ArtifactKind where
+  | pb
+  | vl
+  | fa
+  | hy
+  | sp
+  | ll
+  deriving Repr, DecidableEq, Hashable, Inhabited
+
+def ArtifactKind.prefixString : ArtifactKind → String
+  | .pb => "PB"
+  | .vl => "VL"
+  | .fa => "FA"
+  | .hy => "HY"
+  | .sp => "SP"
+  | .ll => "LL"
+
+def ArtifactKind.all : List ArtifactKind := [.pb, .vl, .fa, .hy, .sp, .ll]
+
+def ArtifactKind.ofPrefix? (s : String) : Option ArtifactKind :=
+  ArtifactKind.all.find? (·.prefixString == s)
+
+/-- PB/VL/FA/HY/SP/LL の単純 ID。 -/
+structure SimpleId where
+  kind : ArtifactKind
+  number : Nat
+  deriving Repr, DecidableEq, Hashable, Inhabited
+
+/-- テストケース ID `TC-<SP番号>-<枝番>`。導出元 SP 番号を構造として持つ。 -/
+structure TestCaseId where
+  spec : Nat
+  branch : Nat
+  deriving Repr, DecidableEq, Hashable, Inhabited
+
+/-- 全 ID の直和。 -/
+inductive AnyId where
+  | simple (id : SimpleId)
+  | testCase (id : TestCaseId)
+  deriving Repr, DecidableEq, Hashable, Inhabited
+
+/-- 3 桁ゼロ埋め (1000 以上はそのまま)。 -/
+def padNumber (n : Nat) : String :=
+  let s := toString n
+  if s.length >= 3 then s
+  else String.ofList (List.replicate (3 - s.length) '0') ++ s
+
+def SimpleId.render (id : SimpleId) : String :=
+  s!"{id.kind.prefixString}-{padNumber id.number}"
+
+def TestCaseId.render (id : TestCaseId) : String :=
+  s!"TC-{padNumber id.spec}-{id.branch}"
+
+def AnyId.render : AnyId → String
+  | .simple id => id.render
+  | .testCase id => id.render
+
+/-- `padNumber` の像のみ受理する strict な数値パース (冗長ゼロ埋めは `none`)。 -/
+def parsePaddedNumber (s : String) : Option Nat := do
+  let n ← s.toNat?
+  guard (s == padNumber n)
+  pure n
+
+/-- 枝番パース (ゼロ埋めなし。`"01"` は `none`)。 -/
+def parseBareNumber (s : String) : Option Nat := do
+  let n ← s.toNat?
+  guard (s == toString n)
+  pure n
+
+def SimpleId.parse (s : String) : Option SimpleId :=
+  match s.splitOn "-" with
+  | [prefixPart, numberPart] => do
+    let kind ← ArtifactKind.ofPrefix? prefixPart
+    let number ← parsePaddedNumber numberPart
+    pure ⟨kind, number⟩
+  | _ => none
+
+def TestCaseId.parse (s : String) : Option TestCaseId :=
+  match s.splitOn "-" with
+  | ["TC", specPart, branchPart] => do
+    let spec ← parsePaddedNumber specPart
+    let branch ← parseBareNumber branchPart
+    pure ⟨spec, branch⟩
+  | _ => none
+
+def AnyId.parse (s : String) : Option AnyId :=
+  (SimpleId.parse s).map .simple <|> (TestCaseId.parse s).map .testCase
+
+-- コンパイル時ロック (代表例)
+#guard SimpleId.render ⟨.sp, 47⟩ == "SP-047"
+#guard TestCaseId.render ⟨47, 1⟩ == "TC-047-1"
+#guard SimpleId.parse "SP-047" == some ⟨.sp, 47⟩
+#guard SimpleId.parse "SP-47" == (none : Option SimpleId)
+#guard TestCaseId.parse "TC-047-12" == some ⟨47, 12⟩
+#guard AnyId.parse "TC-047-2" == some (.testCase ⟨47, 2⟩)
+
+end Idchain
