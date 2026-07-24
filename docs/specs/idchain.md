@@ -137,6 +137,28 @@
 - [ ] **Must-23 (recall-paper 実適用)**: recall-paper (Swift) に init 済みで、実サイクル 1 周
       (PB→VL→FA→HY→SP 承認→TC→実装→検証レポート green→retro) の成果物が recall-paper repo に存在する。
 
+## Must — M5: 発表資料の未再現領域カバー (grilling 合意 2026-07-25)
+
+- [ ] **Must-24 (意味一致レビューゲート)**: SemanticReview レコード (SP 内容ハッシュ束縛・実施者・
+      判定・指摘) を canon に持ち、`lake exe idchain semantic-review <SP-ID> ...` で書込できる。
+      check が (a) 意味検査なし SP の承認、(b) SP 文変更による意味検査失効、を違反として検出する。
+      検査実施は実装コンテキストなしの別エージェント (観点: 多義語・境界値の明示性・SP文⇔invariant 一致)。
+- [ ] **Must-25 (曖昧語 lint)**: 決定論的な曖昧語辞書 (「正の値」「適切に」「高速に」等) により
+      SP 文を lint し、check 出力に非ブロッキングの WARNING として表示する (exit code に影響しない)。
+- [ ] **Must-26 (実装意味論モデル型)**: engine が `MachineFloat` (finite/infinity/negInfinity/nan の
+      帰納型 + 比較・正値判定) を提供し、idchain-spec が「実装型が浮動小数点の SP はモデルで
+      非有限値の扱いを明示する」ことを要求する。
+- [ ] **Must-27 (ベンチ専門家評価)**: 赤黄緑は機械判定のみが正で、専門家 AI エージェントは判定を
+      変更できず解釈・改善提案のみを行う (楽観バイアスの構造的禁止)。評価は report に記録される。
+- [ ] **Must-28 (ロードマップ反映強制)**: report が bench の赤/黄判定に対応する RM (出典 `bench:<名前>`)
+      の不在を検出し総合判定を FAIL にする (p.45「反映の省略は禁止」の機械化)。
+- [ ] **Must-29 (RM アーティファクト種)**: RoadmapItem (RM-NNN: 題名・状態 planned/inCycle/done/dropped・
+      優先度・関連 HY・出典) を 8 種目として追加。連番・削除禁止 (dropped も残す)、inCycle 化には
+      承認必須 (check 違反)、views に roadmap.md を追加。retro の「ロードマップを書き換える」を
+      RM の状態・優先度変更として機械対象化する。
+- [ ] **Must-30 (再現テスト規約)**: TC kind に `regression` を追加し、「発見したバグは再現 TC を
+      canon に導出してから直す」を idchain-build の規約として明文化する。
+
 ## Should
 
 - [ ] Should-1: views の出力は日本語 (発表資料の語彙: 仕様書・テスト設計書・検証レポート に揃える)。
@@ -152,7 +174,10 @@
 - 実装コードの証明 (Lean 実装抽出・Dafny 等)。実装は鎖の外。
 - BizDev プロトタイピング支援層 (発表 p.71)。
 - GitHub PR 承認駆動の承認管理 (承認は Lean 正本埋込 + git 履歴で足りる)。
-- 発表 p.45 のディープリサーチ自動注入 (ベンチ赤黄緑判定までが M3 スコープ)。
+- 発表 p.45 のディープリサーチ自動注入。
+- (M5 grilling 2026-07-25 で non-goal 維持を確認) デリバリー・運用段の機構化 (p.49-50 フラグ切替・
+  p.64 運用連鎖)、デシジョンテーブル支援 (p.53 138 ルール相当)、横断シナリオ、
+  recall-paper での 2 周目実証。
 
 ## 受入条件 (全体 done の定義)
 
