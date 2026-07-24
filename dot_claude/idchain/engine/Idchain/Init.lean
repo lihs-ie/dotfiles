@@ -235,9 +235,12 @@ def runInit (engineRoot : System.FilePath) (targetRepo : String) (update : Bool)
   writeIfAbsent (target / ".github" / "workflows" / "idchain.yml") ciWorkflowTemplate
   let gitHooks := target / ".git" / "hooks"
   if (← gitHooks.pathExists) then
-    IO.FS.writeFile (gitHooks / "pre-commit") preCommitTemplate
-    markExecutable (gitHooks / "pre-commit")
-    IO.println "pre-commit hook を .git/hooks に導入した"
+    if (← (gitHooks / "pre-commit").pathExists) then
+      IO.println "既存の .git/hooks/pre-commit を検出したため上書きしない。idchain/hooks/pre-commit の内容を既存 hook に手動で追記すること"
+    else
+      IO.FS.writeFile (gitHooks / "pre-commit") preCommitTemplate
+      markExecutable (gitHooks / "pre-commit")
+      IO.println "pre-commit hook を .git/hooks に導入した"
   IO.println s!"idchain init: {targetRepo}/idchain を初期化した"
   IO.println "次の一歩: cd idchain && lake build && lake exe idchain check"
   return 0
