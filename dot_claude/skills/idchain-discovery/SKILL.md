@@ -130,6 +130,40 @@ AskUserQuestion で以下を提示し、確定/差し戻しを確認する。提
 反映はまとめて 1 commit でよい (commit message に `idchain-approve` を含める)。
 差し戻し・修正要求の場合は idchain-approve の手順3bに従う (意思の痕跡として理由を残す)。
 
+### 8. 確定した Why/What からロードマップ項目 (RM) を起票する
+
+「筋の良いと判った仮説だけを一周に乗せる」(手順5、発表 p.70) の具体化。G1 で承認された
+HY のうち、机上検証だけに留めず**一周まわす打席** (探索→仕様→実装→検証→リリース→学び、
+idchain の全フェーズ) に乗せると判断したものについて、`Canon/Artifacts.lean` の
+`roadmapItems` に RM を追記する。まだ承認されていない、あるいは机上検証に留める HY には
+起票しない。
+
+採番規則: **既存 RM の最大番号 + 1** (欠番禁止、`roadmap-not-contiguous` 検査対象)。
+
+```lean
+def roadmapItems : List RoadmapItem := [
+  ⟨1, "集計エンジンの汎用化", .planned, 1, some 1, "discovery"⟩,
+  ⟨2, "<HY-XXX を一周に乗せた際の題名>", .planned, <優先度>, some 2, "discovery"⟩
+  -- ⟨番号, 題名, 状態, 優先度, 関連HY番号, 出典⟩
+]
+```
+
+- `status` は起票時点では常に `.planned`。次サイクルでの着手を確定する `.inCycle` への
+  遷移には承認が必要 (idchain-approve、対象 `RM-<番号>`) — 判断が固まっていないうちに
+  `.inCycle` にしない。
+- `priority` は `importance × evidenceStrength` (手順5 で決めた重要度×証拠の強さ) を目安に、
+  値が大きい (重要度が高く証拠が強い) HY ほど小さい数値 (=次に潰す順) を割り当てる。既存 RM
+  との相対順位で決めてよい (絶対値の計算式は決定論検査の対象外)。この判断根拠は起票時の
+  commit message か、承認する場合は approve の `--note` に残す。
+- `hypothesis` は対応 HY 番号 (`some N`)。存在しない HY を指すと `roadmap-hypothesis-missing`
+  違反になる。
+- `source` は `"discovery"` を使う (HY 起票と同じフェーズ由来のため)。
+
+```bash
+lake build
+lake exe idchain check   # roadmap-hypothesis-missing / roadmap-not-contiguous が0件であることを確認
+```
+
 ## 決定論的ゲートの実行順序 (このフェーズで必須)
 
 ```

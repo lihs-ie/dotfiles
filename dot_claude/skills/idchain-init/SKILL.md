@@ -41,7 +41,10 @@ lake exe idchain-dev init <対象repoの絶対パス>
   - `<対象repo>/idchain/engine/` — engine の vendoring コピー (`.lake/` は除外)
   - `<対象repo>/idchain/lakefile.toml` / `lean-toolchain` / `.gitignore`
   - `<対象repo>/idchain/Canon.lean` (root import) / `Canon/Artifacts.lean` (空スケルトン) /
-    `Canon/Approvals.lean` (空 `[]`) / `Canon/Gate.lean` (witness `{}` の空無矛盾性ゲート)
+    `Canon/Approvals.lean` (空 `[]`) / `Canon/Gate.lean` (witness `{}` の空無矛盾性ゲート) /
+    `Canon/SemanticReviews.lean` (空 `[]`、`lake exe idchain semantic-review` 専用の書込先、Must-24)
+  - `<対象repo>/idchain/views/roadmap.md` は初回時点では未生成 (RM が 0 件のため
+    `lake exe idchain views` 実行後に生成される。他の views と同様に DO NOT EDIT)
   - `<対象repo>/idchain/IdchainMain.lean` (`Idchain.Cli.run Canon.registry args` を呼ぶだけ)
   - `<対象repo>/idchain/idchain.json` (アダプタ設定。値は全て空/null — 手順 3 で埋める)
   - `<対象repo>/idchain/hooks/pre-commit` (実行権限付与済み)

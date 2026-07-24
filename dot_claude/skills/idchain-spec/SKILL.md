@@ -1,6 +1,6 @@
 ---
 name: idchain-spec
-description: idchain の仕様フェーズ (SP 起草 → 形式検査 → G2 人間ゲート → 承認後の TC 導出) を実行する。Use when (1) ユーザーが「仕様を書いて」「SP を起票して」「G2 の承認を通して」と言ったとき、(2) /idchain-spec [SP番号 または SP文] を実行したとき、(3) 承認済み SP からテストケース (TC) を導出したいとき。前提として idchain-init 済みの repo であること。G2 承認の実オペレーションは idchain-approve に委譲し、承認後は idchain-build (TDD 実装) に進む。
+description: idchain の仕様フェーズ (SP 起草 → 形式検査 → 意味一致レビュー → G2 人間ゲート → 承認後の TC 導出) を実行する。Use when (1) ユーザーが「仕様を書いて」「SP を起票して」「G2 の承認を通して」と言ったとき、(2) /idchain-spec [SP番号 または SP文] を実行したとき、(3) 承認済み SP からテストケース (TC) を導出したいとき、(4) ユーザーが「意味検査して」「意味一致レビューをやって」と言ったとき。前提として idchain-init 済みの repo であること。G2 承認の実オペレーションは idchain-approve に委譲し、承認後は idchain-build (TDD 実装) に進む。
 ---
 
 # idchain-spec
@@ -70,6 +70,11 @@ def gate : ConsistencyProof Model registry interpretations := {
   `rcases mem with mem | mem` 等で分割し、各枝を `subst mem; rfl` (または `decide`) で閉じる。
 - **これが「形式検査」の実体**: `lake build` が通らない限り `Canon/Gate.lean` (ひいては
   `idchain` exe 自体) がコンパイルできない。矛盾・曖昧さが構造的にゼロになるまで次に進めない。
+- **実装型が浮動小数点の SP**: invariant を素朴に `0 < x` と書くと、実装 (例 Swift `Double`) の
+  `.infinity` のような非有限値が意図せず条件を満たしてしまうことがある (recall-paper SP-001 の
+  教訓)。モデル型には `Idchain.MachineFloat` (`.finite value` / `.infinity` / `.negInfinity` /
+  `.nan` の帰納型) を使い、invariant で非有限値の扱いを明示すること
+  (`MachineFloat.positiveFinite` は `.infinity` を正値として扱わない)。
 - 形式化できない (invariant が書けない/証明が閉じない) 仕様文は SP にしてはならない。
   - 曖昧な語彙を削って書き直すか、
   - 前提となる根拠が薄いなら SP 化を見送り、根拠元の PB の `evidence` に
@@ -90,8 +95,49 @@ lake exe idchain check
   (`orphanSpec` は承認済 SP のみ対象)。
 - **ここで TC を先に追加してはいけない**: 未承認 SP に TC を紐付けると
   `test-case-for-unapproved-spec` 違反 (G2 承認前の TC 導出は禁止) で exit 1 になる。
+- 曖昧語 lint (Must-25、非ブロッキング): SP 文が辞書語 (「正の値」「適切」「十分」「高速」
+  「速やか」「できるだけ」「原則として」「通常は」等) を含むと
+  `WARNING [ambiguous-term] SP-XXX: 曖昧語「<語>」を含む (<理由>)` が出力される。
+  **exit code には影響しない**ため見落としやすいが、出た場合は必ず次のどちらかで対応する:
+  - 境界・単位・有限性が明示された表現に書き直す (推奨。例:「正の値」→「0 より大きい有限値」)。
+  - 意図的にそのままにする場合は、その理由を**手順4 (意味一致レビュー) の `--findings` に記録**する。
 
-### 4. G2 人間ゲート
+### 4. 意味一致レビュー (G2 承認前に必須、Must-24)
+
+SP は文言レベルで多義的になりやすく、書いた本人 (実装コンテキストを持つエージェント) は
+気づきにくい。**実装コンテキストを一切共有しない別エージェント (subagent)** を起動し、
+渡すのは **SP の文と invariant のみ** (実装コード・チャット履歴・試行錯誤の経緯は渡さない)。
+以下 3 観点で検査させる:
+
+- 多義語の有無 (複数の意味に読める語句・省略された主語や単位はないか)
+- 境界値・単位・有限性の明示性 (0 を含むか・単位は何か・浮動小数点なら非有限値の扱いが
+  明示されているか)
+- SP 文 ⇔ invariant の意味一致 (SP の日本語が言っていることと、手順2で書いた invariant が
+  数学的に表現していることが一致するか)
+
+判定は pass/fail の 2 値。**fail なら SP 文 (必要なら invariant も) を改訂し、手順1〜2 に
+戻ってから再度この手順をやり直す**。pass するまで手順5 (G2 人間ゲート) に進まない。
+
+pass したら結果を正本に記録する (引数の**順序は固定**):
+
+```bash
+lake exe idchain semantic-review SP-047 --by <エージェント名> --date <YYYY-MM-DD> --verdict pass --findings "<指摘要約>"
+```
+
+- `--verdict` は `pass` か `fail` のいずれかのみ (それ以外は usage エラーで exit 2)。
+- 成功すると `Canon/SemanticReviews.lean` が全量再生成される (同一 SP への再実行は
+  upsert = 置換)。手編集は禁止。
+- **レビューなしで承認すると check が落ちる**: `lake exe idchain check` は
+  (a) 承認済み SP に fresh な意味一致レビュー (verdict pass かつ現在の SP 内容ハッシュと
+  一致) が無い場合 `semantic-review-missing`、(b) レビュー後に SP 文を書き換えて内容ハッシュ
+  が変わった場合 `semantic-review-stale` を違反として報告する。この手順を省いたまま
+  手順5 の承認コマンド自体は成功してしまうが、直後の `lake exe idchain check` が exit 1 になる。
+
+```bash
+lake exe idchain check   # semantic-review-missing / semantic-review-stale が0件であることを確認
+```
+
+### 5. G2 人間ゲート
 
 AskUserQuestion で以下を提示し、承認/却下/修正要求を確認する:
 
@@ -104,7 +150,7 @@ AskUserQuestion で以下を提示し、承認/却下/修正要求を確認す�
 記録方法も同 skill を参照。commit message には `idchain-approve` を含めること
 (例: `docs(idchain): approve SP-047 [idchain-approve]`)。
 
-### 5. 承認後: 仕様から TC を導出する
+### 6. 承認後: 仕様から TC を導出する
 
 - ID は `TC-<SP番号>-<枝番>` (親 SP 番号を型として保持)。枝番は 1 から。
 - **導出元は SP の仕様文と invariant のみ**。実装コード・既存テストを見て逆算することは
@@ -117,7 +163,8 @@ def testCases : List TestCase := [
 ]
 ```
 
-- `TestCaseKind` は `.example` (具体例) / `.property` (性質) / `.oracle` (複数エンジン一致判定、M3) を選ぶ。
+- `TestCaseKind` は `.example` (具体例) / `.property` (性質) / `.oracle` (複数エンジン一致判定、M3) /
+  `.regression` (バグ再現、導出元は既存 SP の枝番追加。idchain-build の再現テスト規約を参照) を選ぶ。
 
 ```bash
 lake build
@@ -134,10 +181,12 @@ git commit -m "feat(idchain): SP-047 から TC-047-1/2 を導出"
 ## 決定論的ゲートの実行順序 (このフェーズで必須)
 
 ```
-lake build  →  lake exe idchain check  →  lake exe idchain views --check
+lake build  →  lake exe idchain check  →  lake exe idchain semantic-review <SP-ID> ...
+  →  lake exe idchain check (再確認)  →  G2 承認 (idchain-approve)  →  lake exe idchain views --check
 ```
 
 この順序を崩さない (証明が閉じていない状態でトレーサビリティ検査をしても無意味、
+意味一致レビューが無いまま承認しても直後の check が exit 1 になる、
 トレーサビリティが破れた状態でビューを再生成しても正本と一致しない)。
 
 ## 次のフェーズへ

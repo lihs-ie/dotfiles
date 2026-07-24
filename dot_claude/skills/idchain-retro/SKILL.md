@@ -110,15 +110,43 @@ AskUserQuestion で以下を提示し、成果判定を確定する:
 
 ### 6. ロードマップを書き換える
 
-学びに基づき「次に潰す仮説」を更新する (発表 p.73「学びが、次の打席を書き換える」):
+学びに基づき「次に潰す仮説」を更新する (発表 p.73「学びが、次の打席を書き換える」)。
+「ロードマップ」は Canon の `RoadmapItem` (RM) として実体化されている
+(`Canon/Artifacts.lean` の `roadmapItems`、Must-29)。以下を RM の操作として行う:
 
-- 新しい HY を起票する、または既存 HY の `importance`/`evidenceStrength` を
-  見直す。これらは idchain-discovery の手順6と同じ起草手順で行う。
-- **`importance`/`evidenceStrength` を変更した HY は内容ハッシュが変わるため、
-  承認済みなら再承認が必要**になる (idchain-approve、対象は変更した HY)。
+- **RM の追加**: 学びから新たに取り組むべき候補が出た場合に追記する。番号は
+  **既存 RM の最大番号 + 1** (欠番禁止、`roadmap-not-contiguous` 検査対象)。`hypothesis`
+  は関連 HY 番号 (`some N`、無ければ `none`)。存在しない HY を指すと
+  `roadmap-hypothesis-missing` 違反になる。`source` には由来を書く (例 `"LL-002"`)。
+  ```lean
+  def roadmapItems : List RoadmapItem := [
+    ⟨1, "集計エンジンの汎用化", .planned, 1, some 1, "discovery"⟩,
+    ⟨2, "<新しい題名>", .planned, <優先度>, some 2, "LL-002"⟩
+  ]
+  ```
+- **priority の変更**: 学びで危険度・優先度の見立てが変わった既存 RM は `priority`
+  (小さいほど次に潰す順) を直接書き換える。
+- **状態遷移**: `RoadmapItemStatus` は `planned` → `inCycle` → `done`、または任意の
+  時点で `dropped` に遷移する。
+  - `planned → inCycle` (次サイクルで着手を確定する) には**承認が必須** — 承認なしで
+    `inCycle` にすると `lake exe idchain check` が `in-cycle-roadmap-unapproved` 違反を
+    出す。**idchain-approve** で対象 `RM-<番号>` を承認する
+    (`lake exe idchain approve RM-002 --by <承認者> --note <判断根拠> --date <YYYY-MM-DD>`)。
+  - `done` / `dropped` は**削除ではなく状態を書き換えるだけ**。`dropped` になった項目も
+    一覧から消さずに残す (LL の append-only と同じ「意思の痕跡」の思想、発表 p.73)。
+- 加えて、HY 自体の `importance`/`evidenceStrength` を見直す場合は idchain-discovery の
+  手順6と同じ起草手順で行う。**`importance`/`evidenceStrength` を変更した HY は内容ハッシュ
+  が変わるため、承認済みなら再承認が必要**になる (idchain-approve、対象は変更した HY)。
   変更したままゲートを通さずに次フェーズへ進めない。
+- 状態・優先度を書き換えたら `lake exe idchain views` で `views/roadmap.md` を
+  再生成し、`--check` で鮮度を確認する。
 - 次の一手が新しい課題領域なら **idchain-discovery** (問題空間から) に、
   既存の Why/What の範囲内で仕様を追加するだけなら **idchain-spec** に戻る。
+
+```bash
+lake build
+lake exe idchain check   # roadmap-hypothesis-missing / roadmap-not-contiguous / in-cycle-roadmap-unapproved を確認
+```
 
 ## 決定論的ゲートの実行順序 (このフェーズで必須)
 

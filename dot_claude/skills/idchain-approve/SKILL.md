@@ -7,7 +7,15 @@ description: idchain の人間ゲート (G1/G2/G3 共通) の承認オペレー�
 
 承認は Lean 正本 (`Canon/Approvals.lean`) に埋め込み、**対象アーティファクトの内容の
 正準直列化 + FNV-1a 64bit ハッシュに束縛**される。書込は `lake exe idchain approve` 経由のみで、
-真正性は git 履歴が担保する。この skill は PB/VL/FA/HY/SP/LL のどの対象にも共通で使う。
+真正性は git 履歴が担保する。この skill は PB/VL/FA/HY/SP/LL/RM のどの対象にも共通で使う。
+
+- **`approve` と `semantic-review` は別コマンド・別概念**: `lake exe idchain semantic-review`
+  (SP の意味一致レビュー、Must-24) はこの skill の対象外。実施者は承認者ではなく
+  実装コンテキストを持たない別エージェント、判定は pass/fail (合格/不合格) であって
+  承認/却下ではない。semantic-review の実オペレーションは **idchain-spec** の手順に従う。
+  この skill が扱うのは人間ゲート (G1/G2/G3) の**承認**そのものであり、SP を承認する前に
+  semantic-review が pass 済みであることは `idchain-spec` 側の前提条件になる
+  (`lake exe idchain check` の `semantic-review-missing` で機械検査される)。
 
 ## 手順
 
@@ -105,7 +113,17 @@ EOF
 
 ## 呼び出し元との関係
 
-- G2 (仕様承認): **idchain-spec** から呼ばれる。対象は `SP-<番号>`。
-- G1/G3 (Why/What 確定・成果レビュー): 対応する discovery/retro skill (未実装、M2 スコープ) が
-  将来この skill を同様に呼ぶ想定。現時点では対象 ID を明示して直接この skill を呼んでもよい。
+- G2 (仕様承認): **idchain-spec** から呼ばれる。対象は `SP-<番号>`。SP の承認前に
+  意味一致レビュー (semantic-review、idchain-spec の手順4) が pass 済みであることが前提。
+- G1/G3 (Why/What 確定・成果レビュー): **idchain-discovery**/**idchain-retro** から呼ばれる。
+  対象は PB/VL/FA/HY/LL。
+- RM (ロードマップ項目、Must-29): **idchain-retro** (状態遷移・優先度変更時) や
+  **idchain-discovery** (筋の良い仮説を一周に乗せる際の起票時) から呼ばれる。承認が要るのは
+  `status` が `planned` → `inCycle` (次サイクルで着手確定) に遷移するときのみ — 承認なしで
+  `inCycle` にすると `lake exe idchain check` が `in-cycle-roadmap-unapproved` 違反を出す。
+  対象 ID は `RM-<番号>` (例 `RM-002`)、手順は 3a/3b と同じ (承認の場合は
+  `lake exe idchain approve RM-002 --by <承認者> --note <判断根拠> --date <YYYY-MM-DD>`)。
+  `planned` のままの追加・優先度変更や、`done`/`dropped` への遷移には承認は不要
+  (ただし承認済み RM の内容をその後変更すると、他の対象と同様に `stale-approval` になる
+  — 変更が意図的なら再度この skill の手順3a で再承認する)。
 - 承認後の実装着手は **idchain-build** へ。
