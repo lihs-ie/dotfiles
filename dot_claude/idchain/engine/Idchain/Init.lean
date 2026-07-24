@@ -224,7 +224,8 @@ def runInit (engineRoot : System.FilePath) (targetRepo : String) (update : Bool)
   IO.FS.writeFile (idchainDirectory / "lean-toolchain")
     (← IO.FS.readFile (engineRoot / "lean-toolchain"))
   writeIfAbsent (idchainDirectory / "idchain.json") idchainJsonTemplate
-  writeIfAbsent (idchainDirectory / ".gitignore") ".lake/\n"
+  writeIfAbsent (idchainDirectory / ".gitignore")
+    ".lake/\nreports/\noracle-results.json\nbench-results.json\n.gate-status.json\n"
   writeIfAbsent (idchainDirectory / "Canon.lean") canonRootTemplate
   writeIfAbsent (idchainDirectory / "Canon" / "Artifacts.lean") artifactsTemplate
   writeIfAbsent (idchainDirectory / "Canon" / "Approvals.lean") (renderApprovalsLean [])
