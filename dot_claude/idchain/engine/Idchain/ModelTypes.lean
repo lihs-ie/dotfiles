@@ -10,9 +10,14 @@
 
 namespace Idchain
 
-/-- 実装型が浮動小数点の場合のモデル型。非有限値の扱いを invariant で明示できる。 -/
+/-- 実装型が浮動小数点の場合のモデル型。非有限値の扱いを invariant で明示できる。
+
+有限値は有理数対 `finite numerator denominator` で表す (分母既定 1 — 整数は `.finite 21600` のまま)。
+Lean の Int/Nat は任意精度のため、denormal を含む**すべての有限 IEEE754 値を正確に表現できる**
+(例: `.leastNormalMagnitude` ≈ 2.225e-308 は `.finite 22250738585072014 (10 ^ 324)` 級の対で表せる)。
+独立意味検査の指摘 (Int 単独では極小正値を 0 に潰してしまい TC の境界期待と齟齬) への対応。 -/
 inductive MachineFloat where
-  | finite (value : Int)
+  | finite (numerator : Int) (denominator : Nat := 1)
   | infinity
   | negInfinity
   | nan
@@ -20,15 +25,16 @@ inductive MachineFloat where
 
 /-- 有限値 (`finite`) かどうか。`infinity` / `negInfinity` / `nan` はすべて false。 -/
 def MachineFloat.isFinite : MachineFloat → Bool
-  | .finite _ => true
+  | .finite _ _ => true
   | .infinity => false
   | .negInfinity => false
   | .nan => false
 
-/-- `finite v` かつ `0 < v` のときのみ true。非有限値は (無限大であっても) 正値扱いしない
+/-- `finite n d` かつ `0 < n` かつ `0 < d` のときのみ true (分母 0 は不正表現として false)。
+    非有限値は (無限大であっても) 正値扱いしない
     (recall-paper SP-001 の教訓: 「正の値」が `.infinity` を含み得た)。 -/
 def MachineFloat.positiveFinite : MachineFloat → Bool
-  | .finite value => 0 < value
+  | .finite numerator denominator => 0 < numerator && 0 < denominator
   | .infinity => false
   | .negInfinity => false
   | .nan => false
@@ -41,6 +47,10 @@ def MachineFloat.positiveFinite : MachineFloat → Bool
 #guard MachineFloat.positiveFinite (.finite 3) == true
 #guard MachineFloat.positiveFinite (.finite 0) == false
 #guard MachineFloat.positiveFinite (.finite (-1)) == false
+-- 極小正値 (denormal 級) も正確に「正の有限値」として表現できる
+#guard MachineFloat.positiveFinite (.finite 1 (10 ^ 308)) == true
+#guard MachineFloat.positiveFinite (.finite (-1) 2) == false
+#guard MachineFloat.positiveFinite (.finite 1 0) == false
 #guard MachineFloat.positiveFinite .infinity == false
 #guard MachineFloat.positiveFinite .negInfinity == false
 #guard MachineFloat.positiveFinite .nan == false
