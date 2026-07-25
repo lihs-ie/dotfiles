@@ -7,6 +7,13 @@
 #   2. broken-variant — わざと壊した変種が **赤で捕まる** ことを確認する (load-bearing の証明)
 #   3. 空でないこと  — モデルが 0 個の「空っぽの緑」を失格にする
 #
+# モデルの exit code 契約 (これを守らないと「クラッシュ = 検出」と誤読される):
+#   0        主張どおり (検査成立)
+#   1        主張が破れた (反例あり = 検査が働いた)
+#   2 以上   実行エラー (依存不足・モデル自体の不備・クラッシュ)。**検査結果ではない**
+# broken variant は exit 1 でのみ「捕まった」と認める。exit 2+ は異常終了として失格にする
+# (venv 破損や import 失敗を「壊れた実装を検出できた」と数えないため)。
+#
 # 期待レイアウト (setup-env.sh --init が生成):
 #   <dir>/models/*.py                     Z3 モデル。exit 0 = 主張どおり
 #   <dir>/models/broken/<stem>__*.py      同モデルの壊した変種。exit != 0 が期待
@@ -74,8 +81,12 @@ run_z3_lane() {
     "$python_bin" "$model" >/dev/null 2>&1 || actual=$?
     if [ "$actual" -eq 0 ]; then
       report PASSED "z3 model $stem (self-check)"
+    elif [ "$actual" -eq 1 ]; then
+      report FAILED "z3 model $stem (self-check: 主張が破れた)"
+      echo "  --- 出力 ---"
+      "$python_bin" "$model" 2>&1 | sed 's/^/  /' || true
     else
-      report FAILED "z3 model $stem (self-check, exit $actual)"
+      report FAILED "z3 model $stem (実行エラー exit $actual — 検査結果ではない。依存不足かモデル自体の不備)"
       echo "  --- 出力 ---"
       "$python_bin" "$model" 2>&1 | sed 's/^/  /' || true
     fi
@@ -92,10 +103,14 @@ run_z3_lane() {
         [ -z "$variant" ] && continue
         actual=0
         "$python_bin" "$variant" >/dev/null 2>&1 || actual=$?
-        if [ "$actual" -ne 0 ]; then
-          report PASSED "broken variant $(basename "$variant") が赤で捕まった (exit $actual)"
-        else
+        if [ "$actual" -eq 1 ]; then
+          report PASSED "broken variant $(basename "$variant") が赤で捕まった (exit 1)"
+        elif [ "$actual" -eq 0 ]; then
           report FAILED "broken variant $(basename "$variant") が緑のまま通った (検査が効いていない)"
+        else
+          report FAILED "broken variant $(basename "$variant") が exit $actual で異常終了 (クラッシュ/依存不足であって検出ではない)"
+          echo "  --- 出力 ---"
+          "$python_bin" "$variant" 2>&1 | sed 's/^/  /' | tail -10 || true
         fi
       done <<< "$variants"
     fi

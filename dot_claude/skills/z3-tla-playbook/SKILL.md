@@ -92,6 +92,18 @@ bash $SKILL/scripts/run-checks.sh --dir .formal
 `.formal/models/broken/<stem>__<label>.py` と `.formal/specs/broken/<Stem>__<Label>.tla`
 に対照を置く。**対照が無いモデルは失格になる** (`--allow-missing-broken` で一時回避可)。
 
+**モデルの exit code 契約** — 自作モデルはこれに従うこと:
+
+| exit | 意味 |
+|---|---|
+| 0 | 主張どおり (検査成立) |
+| 1 | 主張が破れた (反例あり = 検査が働いた) |
+| 2 以上 | 実行エラー (依存不足・モデル自体の不備・クラッシュ)。**検査結果ではない** |
+
+対照は **exit 1 でのみ「捕まった」と認める**。exit 2 以上は異常終了として失格にする —
+venv 破損や import 失敗を「壊れた実装を検出できた」と数えないため。
+TLA+ 側も同様に、TLC の非 0 exit を VIOLATE と ERROR に分類する。
+
 ### Step 5 — 結果を台帳に落とす
 - **反例が出た** → witness 付きで「これは意図か?」をドメインに問う (`ledger.md` C 欄)
 - **成立を証明できた** → **契約 (regression guard) としてロック** (`ledger.md` B 欄)
