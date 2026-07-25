@@ -43,6 +43,20 @@ rules:
       - "dot_claude/skills/agent-policy-kit/templates/scripts/executable_verify-allowlist-expiry.sh"
     reason: "quarantine.yml は verify-allowlist-expiry.sh --quarantine で期限切れチェックされないと dead registry になる。"
 
+  - id: formal-harness-registered-in-skill
+    when: "dot_claude/skills/z3-tla-playbook/scripts/**"
+    require_one_of:
+      - "dot_claude/skills/z3-tla-playbook/SKILL.md"
+      - "tests/z3-tla-playbook-tests.sh"
+    reason: "ハーネス (setup-env/run-checks) の挙動を変えたら、SKILL.md の手順か契約テストのどちらかが追随しないと、実行経路と文書・検査が乖離する。"
+
+  - id: formal-template-registered-in-skill
+    when: "dot_claude/skills/z3-tla-playbook/templates/**"
+    require_one_of:
+      - "dot_claude/skills/z3-tla-playbook/SKILL.md"
+      - "dot_claude/skills/z3-tla-playbook/scripts/executable_setup-env.sh"
+    reason: "新規テンプレは setup-env.sh --init の配置リストか SKILL.md のファイル構成に載らないと、どこからも展開されない dead template になる。"
+
   - id: iterations-schema-in-skill
     when: "dot_claude/agents/implementer.md"
     require_one_of:
