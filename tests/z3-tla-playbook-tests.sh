@@ -88,6 +88,26 @@ vacuous_output="$(bash "$RUN_CHECKS" --dir tests/fixtures/formal-vacuous-broken 
 assert_contains "run-checks: 対照が緑のとき理由を出力する" \
   "$vacuous_output" "検査が効いていない"
 
+# exit code の分類: 「非 0 = 捕まえた」と数えると、依存不足やクラッシュが
+# 「壊れた実装を検出できた」に化ける (実測: venv 破損時に Abort trap exit 134 を PASS 判定していた)。
+run_test "run-checks: 対照が exit 2 で異常終了 -> exit 1 (クラッシュは検出ではない)" \
+  "bash $RUN_CHECKS --dir tests/fixtures/formal-crash-broken --only z3" \
+  1
+
+crash_output="$(bash "$RUN_CHECKS" --dir tests/fixtures/formal-crash-broken --only z3 2>&1 || true)"
+assert_contains "run-checks: 対照の異常終了を『検出』と区別して報告する" \
+  "$crash_output" "であって検出ではない"
+
+run_test "run-checks: 基準モデルが exit 2 -> exit 1 (実行エラー)" \
+  "bash $RUN_CHECKS --dir tests/fixtures/formal-env-error --only z3" \
+  1
+
+env_error_output="$(bash "$RUN_CHECKS" --dir tests/fixtures/formal-env-error --only z3 2>&1 || true)"
+assert_contains "run-checks: 基準モデルの実行エラーを検査失敗と区別して報告する" \
+  "$env_error_output" "検査結果ではない"
+assert_contains "run-checks: 実行エラーの fixture でも正常な対照は捕捉扱いにする" \
+  "$env_error_output" "が赤で捕まった (exit 1)"
+
 # ---------- setup-env.sh の契約 ----------
 
 init_dir="$(mktemp -d)"
