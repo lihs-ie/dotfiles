@@ -1,0 +1,13 @@
+name = "idchain-broken"
+defaultTargets = ["Canon", "idchain"]
+
+[[require]]
+name = "idchain"
+path = "../../../../dot_claude/idchain/engine"
+
+[[lean_lib]]
+name = "Canon"
+
+[[lean_exe]]
+name = "idchain"
+root = "IdchainMain"

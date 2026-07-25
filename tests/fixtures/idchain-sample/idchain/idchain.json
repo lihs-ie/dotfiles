@@ -1,0 +1,13 @@
+{
+  "repoRoot": "..",
+  "testFileRoots": ["Tests"],
+  "testFileExtensions": [".swift"],
+  "xunitPath": "results/latest-tests.xml",
+  "testCommand": "swift test --xunit-output results/latest-tests.xml",
+  "implementationPaths": ["Sources/"],
+  "editAllowlist": [],
+  "oracleEngines": [
+    {"name": "engine-echo", "command": "echo {query}"},
+    {"name": "engine-printf", "command": "printf '%s\n' {query}"}
+  ]
+}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="SampleTests" tests="2" failures="0">
+    <testcase classname="SampleTests" name="TC-047-1: 明細3件で小計一致" time="0.01"/>
+    <testcase classname="SampleTests" name="TC-047-2: 明細0件で小計0" time="0.01"/>
+  </testsuite>
+</testsuites>

@@ -1,0 +1,16 @@
+name = "idchain"
+defaultTargets = ["Idchain", "idchain-dev", "tests"]
+
+[[lean_lib]]
+name = "Idchain"
+
+[[lean_lib]]
+name = "Tests"
+
+[[lean_exe]]
+name = "idchain-dev"
+root = "Main"
+
+[[lean_exe]]
+name = "tests"
+root = "TestMain"

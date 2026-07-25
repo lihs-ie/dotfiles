@@ -1,0 +1,13 @@
+{"version": "1.2.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"type": "path",
+   "scope": "",
+   "name": "idchain",
+   "manifestFile": "lake-manifest.json",
+   "inherited": false,
+   "dir": "../../../../dot_claude/idchain/engine",
+   "configFile": "lakefile.toml"}],
+ "name": "«idchain-broken»",
+ "lakeDir": ".lake",
+ "fixedToolchain": false}

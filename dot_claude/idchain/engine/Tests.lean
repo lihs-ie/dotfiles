@@ -1,0 +1,12 @@
+import Tests.Framework
+import Tests.IdentifierTests
+import Tests.ArtifactTests
+import Tests.ChecksTests
+import Tests.CrosscheckTests
+import Tests.GenerationTests
+import Tests.OracleTests
+import Tests.PairwiseTests
+import Tests.BenchTests
+import Tests.CliTests
+import Tests.ModelTypesTests
+import Tests.LintTests
