@@ -1191,6 +1191,11 @@ run_test "verify-wiring: origin/HEAD なし + BASE_REF 未設定 -> exit 0 (128 
   0
 rm -rf "$no_origin_head_dir"
 
+# z3-tla-playbook のハーネス契約 (setup-env / run-checks) を本 runner から到達させる。
+run_test "z3-tla-playbook harness contract suite" \
+  "bash tests/z3-tla-playbook-tests.sh" \
+  0
+
 echo ""
 echo "Results: $pass_count passed, $fail_count failed"
 exit $fail_count

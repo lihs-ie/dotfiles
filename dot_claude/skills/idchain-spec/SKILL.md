@@ -165,6 +165,9 @@ def testCases : List TestCase := [
 
 - `TestCaseKind` は `.example` (具体例) / `.property` (性質) / `.oracle` (複数エンジン一致判定、M3) /
   `.regression` (バグ再現、導出元は既存 SP の枝番追加。idchain-build の再現テスト規約を参照) を選ぶ。
+- **`z3-tla-playbook` の反例を持ち込む場合**: 反例は実装由来なので、そのまま TC にすると実装追認
+  テストになる。必ず「意図か?」を突き合わせ、**SP の仕様文か invariant に昇格させてから** TC を
+  導出する (`.formal/ledger.md` の C 欄 (確認質問) → SP 本文 / B 欄の HOLDS → 手順 2 の invariant)。
 
 ```bash
 lake build
