@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$REPO_ROOT"
 
-SKILL_DIR="dot_claude/skills/z3-tla-playbook"
+SKILL_DIR="${SKILL_DIR:-dot_claude/skills/z3-tla-playbook}"
 SETUP="$SKILL_DIR/scripts/executable_setup-env.sh"
 RUN_CHECKS="$SKILL_DIR/scripts/executable_run-checks.sh"
 
@@ -40,6 +40,17 @@ assert_contains() {
     pass_count=$((pass_count + 1))
   else
     echo "FAILED: $name (expected to contain: $needle)"
+    fail_count=$((fail_count + 1))
+  fi
+}
+
+assert_file_contains() {
+  local name="$1" file="$2" needle="$3"
+  if grep -qF "$needle" "$file"; then
+    echo "PASSED: $name"
+    pass_count=$((pass_count + 1))
+  else
+    echo "FAILED: $name (expected $file to contain: $needle)"
     fail_count=$((fail_count + 1))
   fi
 }
@@ -84,6 +95,17 @@ run_test "run-checks: 不正な --only -> exit 2" \
   "bash $RUN_CHECKS --only quantum" \
   2
 
+tlc_output_dir="$(mktemp -d)"
+printf '%s\n' 'Error: Invariant NeverOverCap is violated.' > "$tlc_output_dir/invariant.txt"
+printf '%s\n' 'Error: Assumption CapPositive is false.' > "$tlc_output_dir/assumption.txt"
+printf '%s\n' 'TLC encountered the following error: parse error' > "$tlc_output_dir/parse.txt"
+assert_contains "run-checks: invariant violation -> VIOLATE" \
+  "$(bash "$RUN_CHECKS" --classify-tlc-output "$tlc_output_dir/invariant.txt" 12)" "VIOLATE"
+assert_contains "run-checks: false assumption -> ERROR" \
+  "$(bash "$RUN_CHECKS" --classify-tlc-output "$tlc_output_dir/assumption.txt" 12)" "ERROR"
+assert_contains "run-checks: parse error -> ERROR" \
+  "$(bash "$RUN_CHECKS" --classify-tlc-output "$tlc_output_dir/parse.txt" 12)" "ERROR"
+
 vacuous_output="$(bash "$RUN_CHECKS" --dir tests/fixtures/formal-vacuous-broken --only z3 2>&1 || true)"
 assert_contains "run-checks: 対照が緑のとき理由を出力する" \
   "$vacuous_output" "検査が効いていない"
@@ -111,6 +133,8 @@ assert_contains "run-checks: 実行エラーの fixture でも正常な対照は
 # ---------- setup-env.sh の契約 ----------
 
 init_dir="$(mktemp -d)"
+mkdir -p "$init_dir/.formal"
+printf '%s\n' 'custom-entry/' > "$init_dir/.formal/.gitignore"
 run_test "setup-env --init -> exit 0" \
   "bash $SETUP --dir $init_dir/.formal --init" \
   0
@@ -126,6 +150,13 @@ for expected in models/example_cap.py models/broken/example_cap__guard-removed.p
     echo "FAILED: setup-env --init が $expected を配置していない"
     fail_count=$((fail_count + 1))
   fi
+done
+
+assert_file_contains "setup-env --init は既存 .gitignore の独自行を保持する" \
+  "$init_dir/.formal/.gitignore" "custom-entry/"
+for ignore_entry in '.venv/' 'tools/' 'states/' '*.st'; do
+  assert_file_contains "setup-env --init が不足 ignore 行 $ignore_entry を追加する" \
+    "$init_dir/.formal/.gitignore" "$ignore_entry"
 done
 
 run_test "setup-env --init は再実行しても既存を壊さない (冪等)" \
@@ -154,6 +185,17 @@ run_test "template model.py が Python として構文妥当" \
 run_test "template broken_model.py が Python として構文妥当" \
   "python3 -m py_compile $SKILL_DIR/templates/broken_model.py" \
   0
+
+run_test "template model.py は solver unknown を ERROR (exit 2) にする" \
+  "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=tests/fixtures/z3-unknown python3 $SKILL_DIR/templates/model.py" \
+  2
+unknown_output="$(PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=tests/fixtures/z3-unknown python3 "$SKILL_DIR/templates/model.py" 2>&1 || true)"
+assert_contains "template model.py は unknown reason を報告する" \
+  "$unknown_output" "fixture-forced-unknown"
+
+run_test "template broken_model.py も solver unknown を ERROR (exit 2) にする" \
+  "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=tests/fixtures/z3-unknown python3 $SKILL_DIR/templates/broken_model.py" \
+  2
 
 # TLA+ はモジュール名とファイル名の一致が必須。--init 後の配置名と突き合わせる。
 tla_module="$(sed -n 's/^-*[[:space:]]*MODULE[[:space:]]\([A-Za-z0-9_]*\).*/\1/p' "$SKILL_DIR/templates/spec.tla" | head -1)"

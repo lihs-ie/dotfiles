@@ -1,0 +1,18 @@
+{
+  "description": "idchain の G2 未承認状態で実装ファイルへの apply_patch を止める。",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^apply_patch$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.codex/idchain/hooks/idchain-edit-guard.py",
+            "timeout": 5,
+            "statusMessage": "Checking idchain G2 gate"
+          }
+        ]
+      }
+    ]
+  }
+}

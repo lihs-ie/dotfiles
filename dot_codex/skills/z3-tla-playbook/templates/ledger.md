@@ -7,7 +7,7 @@
 - 検証ディレクトリ: `.formal/`
 - 選択した手段: `<全列挙 / Z3 / TLA+>`
 - 選択理由: `<有限か、決定的か、状態遷移・非決定性が本質か>`
-- 再実行: `bash ~/.claude/skills/z3-tla-playbook/scripts/run-checks.sh --dir .formal`
+- 再実行: `bash ~/.codex/skills/z3-tla-playbook/scripts/run-checks.sh --dir .formal`
 
 ---
 

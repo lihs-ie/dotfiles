@@ -1,6 +1,6 @@
 ---
 name: z3-tla-playbook
-description: 既存実装を事実上の仕様として読み、Z3・TLA+・有限全列挙から最小の手段を選んで、設定矛盾、被覆漏れ、表現ずれ、並行レースなどの反例を探索する独立デバッグ Skill。Use when ユーザーが「形式手法で検証」「Z3 で検査」「TLA+ でモデル検査」「反例を出して」「実装から仕様を吸い出して」「並行バグを洗い出して」「設定が矛盾していないか」「不変条件を検査して」と依頼したとき、または /z3-tla-playbook を実行したとき。結果を HOLDS / REFUTED / ERROR に分け、モデル・反例・判断記録を .formal/ に残す。仕様承認、実装修正、他の開発フローへの引き渡しは行わない。
+description: 既存実装を事実上の仕様として読み、Z3・TLA+・有限全列挙から最小の手段を選んで、設定矛盾、被覆漏れ、表現ずれ、並行レースなどの反例を探索する独立デバッグ Skill。Use when ユーザーが「形式手法で検証」「Z3 で検査」「TLA+ でモデル検査」「反例を出して」「実装から仕様を吸い出して」「並行バグを洗い出して」「設定が矛盾していないか」「不変条件を検査して」と依頼したとき、または $z3-tla-playbook を実行したとき。結果を HOLDS / REFUTED / ERROR に分け、モデル・反例・判断記録を .formal/ に残す。仕様承認、実装修正、他の開発フローへの引き渡しは行わない。
 ---
 
 # z3-tla-playbook
@@ -53,7 +53,7 @@ description: 既存実装を事実上の仕様として読み、Z3・TLA+・有�
 配布後名と source 名のどちらか一方だけが存在する。
 
 ```bash
-SKILL="${Z3_TLA_SKILL_DIR:-$HOME/.claude/skills/z3-tla-playbook}"
+SKILL="${Z3_TLA_SKILL_DIR:-$HOME/.codex/skills/z3-tla-playbook}"
 if [ -x "$SKILL/scripts/setup-env.sh" ]; then
   SETUP="$SKILL/scripts/setup-env.sh"
   RUN_CHECKS="$SKILL/scripts/run-checks.sh"

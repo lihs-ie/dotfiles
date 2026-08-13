@@ -11,7 +11,8 @@
 - 「やったか」は決定論的に常時・全件チェック (ID の鎖・テスト実行・ビルド)、
   「正しいか」はモデル証明 + 独立 AI レビューで担保する (発表 p.41 の二層構造)。
 - 旧 agent-policy kit とその開発フローは**廃止予定のため一切依存しない** (完全新規)。
-  chezmoi の配布経路 (dot_claude → ~/.claude) のみ再利用する。
+  chezmoi の配布経路を Claude Code (`dot_claude → ~/.claude`) と Codex
+  (`dot_codex → ~/.codex`) のホストアダプタに再利用する。
 
 ## 全体アーキテクチャ (合意済み設計)
 
@@ -35,7 +36,9 @@
 - 正本: 対象 repo の `idchain/Canon/*.lean` (全 7 種アーティファクトを Lean の型のインスタンスとして定義)。
 - 生成物: `idchain/views/*.md` (DO NOT EDIT ヘッダ付き)。鮮度は再生成 diff で機械検査。
 - 検証レポート: `idchain/reports/<日付>/` に MD + JSON。
-- engine (型定義 + 全 lake exe) の正本は `dot_claude/idchain/engine/` (→ `~/.claude/idchain/engine/` に配布)。
+- engine (型定義 + 全 lake exe) の論理正本は `dot_claude/idchain/engine/`。
+  Claude Code には `~/.claude/idchain/engine/` へ直接配布し、Codex には正本 digest を検証する
+  chezmoi `run_onchange` で `~/.codex/idchain/engine/` へ実体同期する。
   対象 repo へは **init 時に vendoring** (hermetic CI のため。更新は `idchain init --update`)。
 
 ### 証明境界 (モデル証明 + テスト検証)
@@ -62,7 +65,9 @@
 
 - skills: `idchain-discovery` / `idchain-spec` / `idchain-build` / `idchain-retro` + 補助 `idchain-init` / `idchain-approve`。
 - 強制点: ① skill 内ゲート ② pre-commit (init が導入) ③ CI テンプレート (全件: 証明ビルド + 突合 + 鮮度)
-  ④ Claude Code PreToolUse 編集ブロック hook (`idchain/` 保有 repo でのみ発火)。
+  ④ホスト別 PreToolUse 編集ブロック hook (`idchain/` 保有 repo でのみ発火)。Claude Code は
+  Edit/Write系tool、Codexは標準編集経路 `apply_patch` を同期的にdenyする。Codexのshell経由変更は
+  pre-commitとCIが補完する。
 - 周辺ツール (exporter・突合・ビュー生成・レポート生成) も **lake exe で Lean に統一** (二重定義ゼロ)。
 
 ## Must — M1: コア鎖
@@ -159,6 +164,25 @@
 - [ ] **Must-30 (再現テスト規約)**: TC kind に `regression` を追加し、「発見したバグは再現 TC を
       canon に導出してから直す」を idchain-build の規約として明文化する。
 
+## Must — M6: Codex ホスト対応 (grill-with-docs 合意 2026-08-13)
+
+- [ ] **Must-31 (全工程 Skill)**: `idchain` オーケストレーターが対象 repo の導入状態、Canon、
+      approval、semantic review、TC、verification report、LL/RM を観測し、init / discovery /
+      spec / approve / build / retro の次に実行可能な1フェーズへルーティングする。G1/G2/G3 は
+      自動承認せずユーザー判断で停止する。
+- [ ] **Must-32 (Codex Skill 同期)**: `dot_claude/skills/idchain*/SKILL.md` を論理正本とし、
+      Codex固有のpath・明示呼び出し・対話表現だけを決定論的に変換して
+      `dot_codex/skills/idchain*/SKILL.md` に保持する。同期ずれは契約テストでfailする。
+- [ ] **Must-33 (Codex engine 実体化)**: engine正本41ファイルを `dot_codex/` に重複commitせず、
+      正本SHA-256を埋め込んだchezmoi `run_onchange` がstaging digestを検証してから
+      `~/.codex/idchain/engine/` へ原子的に同期する。
+- [ ] **Must-34 (Codex編集hook)**: `~/.codex/hooks.json` の同期 `PreToolUse` が `apply_patch` の
+      Add/Update/Delete/Move対象を全件解析し、idchain repoの実装ファイルだけをClaude版Must-22と
+      同じG2規則でdenyする。Canon・test roots・edit allowlistは許可する。
+- [ ] **Must-35 (Codex実配布実証)**: 明示したchezmoi sourceと対象pathでapplyし、7 Skill、hook、
+      engine実体が `~/.codex/` に存在すること、engineで `lake build` とtestsが通ることを確認する。
+      non-managed hookの信頼はCodex `/hooks` でユーザーが行う。
+
 ## Should
 
 - [ ] Should-1: views の出力は日本語 (発表資料の語彙: 仕様書・テスト設計書・検証レポート に揃える)。
@@ -184,7 +208,8 @@
 1. dotfiles の fixture テストが green (`tests/` から実行、正例 + 負例全件)。
 2. 各 lake exe の exit code / 出力を実行 assert したコマンドログが存在する。
 3. recall-paper で実サイクル 1 周が完了し、検証レポートに孤児 0 件の数値が刻まれている。
-4. chezmoi apply 後に `~/.claude/idchain/` と skills が配布されている。
+4. chezmoi apply 後に `~/.claude/idchain/` と skills、および `~/.codex/idchain/`、
+   `~/.codex/skills/idchain*/`、`~/.codex/hooks.json` が配布されている。
 
 ## マイルストーン
 
@@ -194,6 +219,8 @@
 | M2 | 上流 + retro (discovery/retro skills・G1/G3) | Must-16〜17 |
 | M3 | 付帯機構 (独立レビュー・オラクル・ペアワイズ・ベンチ) | Must-18〜21 |
 | M4 | 編集ブロック hook + recall-paper 実適用 | Must-22〜23 |
+| M5 | 意味一致・曖昧語・実装意味論・RM・再現テスト | Must-24〜30 |
+| M6 | Codex 全工程 Skill・hook・engine 配布 | Must-31〜35 |
 
 ## リスク (合意済み受容)
 
@@ -201,3 +228,5 @@
 - 付帯機構 4 種全部入り + Lean exe 統一は初回構築として最大級 → M1-M4 段階分割で吸収。
 - Lean での XML parse / glob / hash は自前実装 (Batteries 圏内)。対象は限定的で一度書けば安定。
 - idchain 自身の開発は既存グローバル規約 (plan → TDD → review) で行い、完成後に idchain 自身を dogfood する。
+- Codexのnon-managed hookは定義hashが変わるたびに再信頼が必要。chezmoi apply後の `/hooks` 確認を
+  人間の最終配布ゲートとする。

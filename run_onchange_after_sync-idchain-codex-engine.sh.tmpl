@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# idchain engine source digest: {{ include "dot_codex/idchain/engine-source.sha256" | trim }}
+set -euo pipefail
+
+"{{ .chezmoi.homeDir }}/.codex/idchain/sync-engine.sh" \
+  "{{ .chezmoi.sourceDir }}/dot_claude/idchain/engine" \
+  "{{ .chezmoi.homeDir }}/.codex/idchain/engine" \
+  "{{ include "dot_codex/idchain/engine-source.sha256" | trim }}"

@@ -4,7 +4,8 @@
 
 ## 収録物
 
-- `dot_claude/` → `~/.claude/` — Claude Code 設定 (agents / skills / docs)。
+- `dot_claude/` → `~/.claude/` — Claude Code 設定と共通 Skill の論理正本。
+- `dot_codex/` → `~/.codex/` — Codex 設定、同期済み Skills、hook adapter。
 
 > 今後 zsh / git / その他ツールの dotfiles も `dot_*/` で追加していく。
 

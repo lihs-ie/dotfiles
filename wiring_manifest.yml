@@ -57,9 +57,60 @@ rules:
       - "dot_claude/skills/z3-tla-playbook/scripts/executable_setup-env.sh"
     reason: "新規テンプレは setup-env.sh --init の配置リストか SKILL.md のファイル構成に載らないと、どこからも展開されない dead template になる。"
 
+  - id: z3-tla-skill-propagates-to-codex
+    when: "dot_claude/skills/z3-tla-playbook/**"
+    require_one_of:
+      - "dot_codex/skills/z3-tla-playbook/**"
+      - "scripts/sync-z3-tla-playbook-codex.sh"
+      - "tests/z3-tla-playbook-codex-sync-tests.sh"
+    reason: "z3-tla-playbook のローカル実装正本を変えたら、Codex 配布物と同期検査が追随しないとホスト間でデバッグ手順が分岐する。"
+    smoke: "bash scripts/sync-z3-tla-playbook-codex.sh --check"
+
+  - id: z3-tla-codex-package-wired
+    when: "dot_codex/skills/z3-tla-playbook/**"
+    require_one_of:
+      - "scripts/sync-z3-tla-playbook-codex.sh"
+      - "tests/z3-tla-playbook-codex-sync-tests.sh"
+    reason: "Codex の生成パッケージは決定論的同期と正本・生成物の両方を走らせる契約テストから到達可能でなければならない。"
+    smoke: "bash tests/z3-tla-playbook-codex-sync-tests.sh"
+
   - id: iterations-schema-in-skill
     when: "dot_claude/agents/implementer.md"
     require_one_of:
       - "dot_claude/skills/proven-done/SKILL.md"
       - "dot_claude/docs/agent-policy.md"
     reason: "iterations.json スキーマが implementer に追加されたら proven-done SKILL.md か正本から参照される必要がある。"
+
+  - id: idchain-skill-propagates-to-codex
+    when: "dot_claude/skills/idchain*/SKILL.md"
+    require_one_of:
+      - "dot_codex/skills/idchain*/SKILL.md"
+      - "scripts/sync-idchain-codex.sh"
+      - "tests/idchain-codex-sync-tests.sh"
+    reason: "idchain Skill の論理正本を変えたら、Codex 配布実体か決定論的同期・検査も追随しないとホスト間で工程規律が分岐する。"
+    smoke: "bash scripts/sync-idchain-codex.sh --check"
+
+  - id: idchain-engine-propagates-to-codex-digest
+    when: "dot_claude/idchain/engine/**"
+    require_one_of:
+      - "dot_codex/idchain/engine-source.sha256"
+      - "scripts/sync-idchain-codex.sh"
+      - "tests/idchain-codex-sync-tests.sh"
+    reason: "engine 正本を変えたら Codex run_onchange の入力 digest が追随しないと stale engine が配布される。"
+    smoke: "bash tests/idchain-codex-sync-tests.sh"
+
+  - id: idchain-codex-hook-wired
+    when: "dot_codex/idchain/hooks/**"
+    require_one_of:
+      - "dot_codex/hooks.json"
+      - "tests/idchain-codex-hook-tests.sh"
+    reason: "Codex hook adapter は hooks.json から起動され、実payloadの契約テストでdeny/allow境界が検証されなければならない。"
+    smoke: "bash tests/idchain-codex-hook-tests.sh"
+
+  - id: idchain-codex-engine-sync-wired
+    when: "dot_codex/idchain/executable_sync-engine.sh"
+    require_one_of:
+      - "run_onchange_after_sync-idchain-codex-engine.sh.tmpl"
+      - "tests/idchain-codex-sync-tests.sh"
+    reason: "Codex engine 同期実装は chezmoi run_onchange から到達し、正本一致とドリフト修復を契約テストで観測できなければならない。"
+    smoke: "bash tests/idchain-codex-sync-tests.sh"

@@ -41,10 +41,6 @@ light レーンで実際に実行される Step を 1 画面で列挙する (Ste
    ブロックはせず続行する (現状維持)。
 4. **spec 前提**: `docs/specs/<feature>.md` が在るか確認する。**無ければ** Step 1 で先に仕様化する
    (`/grill-me` で人間と認識合わせ → spec-curator で正規化)。
-   仕様書が無いだけでなく **既存実装が事実上の仕様になっている** 場合 (legacy 改修 / 設定ルール /
-   並行制御 / クロス境界契約) は、先に `z3-tla-playbook` skill で実装から仕様を吸い出し、
-   反例を「意図か / バグか」まで決着させてから spec-curator に渡す。人間の記憶だけを源にすると、
-   実装が現に決めている暗黙の挙動 (default 値・エラー時の倒れ方・境界の向き) が Must から抜ける。
 5. **既存成果物の退避 (Amendment A4)**: `.active` を書く前に、`.agent-evidence/` 直下に前タスクの
    implementer 成果物 (`iterations.json` / `commands.txt` / `wiring-map.json` / `completion-report.md` /
    `round-N/` / `wiring-waivers.txt`) が残っていれば、`.agent-evidence/_archive/<旧 task_id>/` へ
