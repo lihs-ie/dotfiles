@@ -1191,9 +1191,9 @@ run_test "verify-wiring: origin/HEAD なし + BASE_REF 未設定 -> exit 0 (128 
   0
 rm -rf "$no_origin_head_dir"
 
-# z3-tla-playbook のハーネス契約 (setup-env / run-checks) を本 runner から到達させる。
-run_test "z3-tla-playbook harness contract suite" \
-  "bash tests/z3-tla-playbook-tests.sh" \
+# z3-tla-playbook の正本・Codex 同期・両ホストのハーネス契約を本 runner から到達させる。
+run_test "z3-tla-playbook Codex package and harness contract suite" \
+  "bash tests/z3-tla-playbook-codex-sync-tests.sh" \
   0
 
 echo ""

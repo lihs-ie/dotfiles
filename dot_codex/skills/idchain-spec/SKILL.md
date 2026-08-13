@@ -1,6 +1,6 @@
 ---
 name: idchain-spec
-description: idchain の仕様フェーズ (SP 起草 → 形式検査 → 意味一致レビュー → G2 人間ゲート → 承認後の TC 導出) を実行する。Use when (1) ユーザーが「仕様を書いて」「SP を起票して」「G2 の承認を通して」と言ったとき、(2) /idchain-spec [SP番号 または SP文] を実行したとき、(3) 承認済み SP からテストケース (TC) を導出したいとき、(4) ユーザーが「意味検査して」「意味一致レビューをやって」と言ったとき。前提として idchain-init 済みの repo であること。G2 承認の実オペレーションは idchain-approve に委譲し、承認後は idchain-build (TDD 実装) に進む。
+description: idchain の仕様フェーズ (SP 起草 → 形式検査 → 意味一致レビュー → G2 人間ゲート → 承認後の TC 導出) を実行する。Use when (1) ユーザーが「仕様を書いて」「SP を起票して」「G2 の承認を通して」と言ったとき、(2) $idchain-spec [SP番号 または SP文] を実行したとき、(3) 承認済み SP からテストケース (TC) を導出したいとき、(4) ユーザーが「意味検査して」「意味一致レビューをやって」と言ったとき。前提として idchain-init 済みの repo であること。G2 承認の実オペレーションは idchain-approve に委譲し、承認後は idchain-build (TDD 実装) に進む。
 ---
 
 # idchain-spec
@@ -139,7 +139,7 @@ lake exe idchain check   # semantic-review-missing / semantic-review-stale が0�
 
 ### 5. G2 人間ゲート
 
-AskUserQuestion で以下を提示し、承認/却下/修正要求を確認する:
+ユーザーに以下を提示し、承認/却下/修正要求を確認する:
 
 - 仕様文 (SP-XXX の `text`)
 - 形式的解釈 (`interpretations` に足した invariant)

@@ -29,7 +29,7 @@ proven-done、触れないなら triple-research-dev、仕様が固まってい�
 | ADR を新規作成 | `adr-author` | 5-phase インタビュー |
 | ADR の鮮度監査・改訂 | `adr-guard` | ADR↔コード乖離検出 + 改訂履歴 |
 | 実装が仕様に即しているか | `spec-compliance-review` | 完了報告前の gate |
-| 仕様書が無い実装から仕様を吸い出す | `z3-tla-playbook` | Z3/TLA+ で反例を出し台帳化。proven-done の前段 / idchain-spec の入力 |
+| 既存実装の形式デバッグ | `z3-tla-playbook` | 全列挙/Z3/TLA+ で反例を探索し `.formal/` に台帳化する独立ツール |
 | ドメインモデリングのレビュー | `domain-modeling-review` | |
 | プロダクト↔ドメイン理論の整合性監査 | `domain-integrity-audit` | 8 レイヤー監査。domain-expertise skill を対象プロジェクトに生成・永続化 |
 | アーキテクチャ規約の参照 | `onion-architecture` / `layered-architecture-dip` | |
