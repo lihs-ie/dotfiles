@@ -1,0 +1,139 @@
+schema_version: "1.0"
+snapshot: apple-public-ui-ux@2026.08
+evidence:
+  - identifier: EVD-HIG-ACCESSIBILITY
+    level: L1
+    source_kind: apple_hig
+    title: Accessibility
+    source: https://developer.apple.com/design/human-interface-guidelines/accessibility
+    retrieved_at: "2026-08-14"
+    summary: Interfaces should be perceivable, adaptable, operable with assistive technologies, and not rely on one presentation or interaction channel.
+    status: confirmed
+  - identifier: EVD-HIG-BUTTONS
+    level: L1
+    source_kind: apple_hig
+    title: Buttons
+    source: https://developer.apple.com/design/human-interface-guidelines/buttons
+    retrieved_at: "2026-08-14"
+    summary: System buttons provide built-in states and adaptation; actionable hit regions should generally be at least 44 by 44 points.
+    status: confirmed
+  - identifier: EVD-HIG-COLOR
+    level: L1
+    source_kind: apple_hig
+    title: Color
+    source: https://developer.apple.com/design/human-interface-guidelines/color
+    retrieved_at: "2026-08-14"
+    summary: Use color by semantic role and preserve meaning across appearance and accessibility settings.
+    status: confirmed
+  - identifier: EVD-HIG-MOTION
+    level: L1
+    source_kind: apple_hig
+    title: Motion
+    source: https://developer.apple.com/design/human-interface-guidelines/motion
+    retrieved_at: "2026-08-14"
+    summary: Custom motion should remain understandable and accommodate system accessibility preferences.
+    status: confirmed
+  - identifier: EVD-HIG-POINTING
+    level: L1
+    source_kind: apple_hig
+    title: Pointing devices
+    source: https://developer.apple.com/design/human-interface-guidelines/pointing-devices
+    retrieved_at: "2026-08-14"
+    summary: On iPad a pointing device is an additional interaction method and does not replace touch or gestures.
+    status: confirmed
+  - identifier: EVD-HIG-PENCIL
+    level: L1
+    source_kind: apple_hig
+    title: Apple Pencil and Scribble
+    source: https://developer.apple.com/design/human-interface-guidelines/apple-pencil-and-scribble
+    retrieved_at: "2026-08-14"
+    summary: Pencil-specific capabilities should respect user configuration and coexist with other input methods.
+    status: confirmed
+  - identifier: EVD-HIG-PRIVACY
+    level: L1
+    source_kind: apple_hig
+    title: Privacy
+    source: https://developer.apple.com/design/human-interface-guidelines/privacy
+    retrieved_at: "2026-08-14"
+    summary: Request protected resources in a context where the reason and user intent are clear.
+    status: confirmed
+  - identifier: EVD-HIG-ALERTS
+    level: L1
+    source_kind: apple_hig
+    title: Alerts
+    source: https://developer.apple.com/design/human-interface-guidelines/alerts
+    retrieved_at: "2026-08-14"
+    summary: Alerts and confirmation flows should communicate consequences and preserve a safe cancellation path.
+    status: confirmed
+  - identifier: EVD-WWDC24-DYNAMIC-TYPE
+    level: L1
+    source_kind: apple_wwdc
+    title: Get started with Dynamic Type
+    source: https://developer.apple.com/videos/play/wwdc2024/10074/
+    retrieved_at: "2026-08-14"
+    summary: SwiftUI and UIKit should use scalable text styles and adapt layout flow across standard and accessibility text sizes.
+    status: confirmed
+  - identifier: EVD-WWDC25-SWIFTUI-DESIGN
+    level: L2
+    source_kind: apple_wwdc
+    title: Build a SwiftUI app with the new design
+    source: https://developer.apple.com/videos/play/wwdc2025/323/
+    retrieved_at: "2026-08-14"
+    summary: SwiftUI structural components and controls adopt the new system design; custom Liquid Glass should be limited to justified custom elements.
+    status: confirmed
+  - identifier: EVD-WWDC25-UIKIT-DESIGN
+    level: L2
+    source_kind: apple_wwdc
+    title: Build a UIKit app with the new design
+    source: https://developer.apple.com/videos/play/wwdc2025/284/
+    retrieved_at: "2026-08-14"
+    summary: UIKit navigation, split, tab, toolbar, and control components adopt the system design and should replace unnecessary custom equivalents.
+    status: confirmed
+  - identifier: EVD-WWDC25-IPAD
+    level: L1
+    source_kind: apple_wwdc
+    title: Elevate the design of your iPad app
+    source: https://developer.apple.com/videos/play/wwdc2025/208/
+    retrieved_at: "2026-08-14"
+    summary: iPad interfaces should adapt navigation and layout to resizable windows while preserving state and supporting pointer, keyboard, and menu behavior.
+    status: confirmed
+  - identifier: EVD-WWDC25-DESIGN-SYSTEM
+    level: L1
+    source_kind: apple_wwdc
+    title: Get to know the new design system
+    source: https://developer.apple.com/videos/play/wwdc2025/356/
+    retrieved_at: "2026-08-14"
+    summary: Information architecture, content, controls, and navigation form an adaptive system across devices, sizes, and input modes.
+    status: confirmed
+  - identifier: EVD-WWDC25-LIQUID-GLASS
+    level: L1
+    source_kind: apple_wwdc
+    title: Meet Liquid Glass
+    source: https://developer.apple.com/videos/play/wwdc2025/219/
+    retrieved_at: "2026-08-14"
+    summary: Liquid Glass is an adaptive functional layer for controls and navigation rather than a universal content decoration.
+    status: confirmed
+  - identifier: EVD-XCTEST-ACCESSIBILITY-AUDIT
+    level: L2
+    source_kind: apple_developer_documentation
+    title: Performing accessibility audits for your app
+    source: https://developer.apple.com/documentation/accessibility/performing-accessibility-audits-for-your-app
+    retrieved_at: "2026-08-14"
+    summary: Automated accessibility audit findings are a test input but do not replace assistive-technology workflow validation.
+    status: confirmed
+  - identifier: EVD-APPLE-UIVIEWCONTROLLERREPRESENTABLE-UPDATE
+    level: L2
+    source_kind: apple_developer_documentation
+    title: updateUIViewController(_:context:)
+    source: https://developer.apple.com/documentation/swiftui/uiviewcontrollerrepresentable/updateuiviewcontroller(_:context:)
+    retrieved_at: "2026-08-14"
+    summary: SwiftUI calls the representable update method for state changes affecting the UIKit view controller; the method updates the controller configuration to match the new state.
+    status: confirmed
+  - identifier: EVD-OBSERVATION-PROTOCOL
+    level: L3
+    source_kind: observation_protocol
+    title: Official app observation promotion protocol
+    source: ../references/workflow-contract.md
+    retrieved_at: "2026-08-14"
+    summary: An observation may influence a versioned profile only after repeatable cross-app measurement without conflict with L1 or L2 evidence.
+    status: provisional

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lihs.local/schemas/apple-ui-ux-approval.schema.json",
+  "title": "Apple Public UI UX Design Approval",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "identifier", "status", "project", "approved_by", "approved_at", "design_backend", "profiles", "spec_digest", "artifacts", "invalidation"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "identifier": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+    "status": {"const": "approved"},
+    "project": {"type": "string", "minLength": 1},
+    "approved_by": {"type": "string", "minLength": 1},
+    "approved_at": {"type": "string", "format": "date-time"},
+    "design_backend": {"enum": ["claude-design", "open-design"]},
+    "profiles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "spec_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "invalidation": {"const": "any_digest_change"}
+  }
+}

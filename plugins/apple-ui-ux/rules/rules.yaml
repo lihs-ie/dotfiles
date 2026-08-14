@@ -1,0 +1,240 @@
+schema_version: "1.0"
+rules:
+  - identifier: NAV-001
+    version: 0.1.0
+    title: Prefer semantic system navigation
+    module: navigation
+    evidence: [EVD-WWDC25-SWIFTUI-DESIGN, EVD-WWDC25-UIKIT-DESIGN]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: navigation.exists implies navigation.uses_system_container or approved_exception.exists
+    measurement: {kind: static_plus_runtime}
+    verification: {status: planned}
+  - identifier: NAV-002
+    version: 0.1.0
+    title: Width adaptation is non-destructive
+    module: adaptivity
+    profiles: [ipados18, ipados26]
+    evidence: [EVD-WWDC25-IPAD]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: resize.before.domain_state == resize.after.domain_state
+    measurement: {kind: runtime_state_trace}
+    verification: {status: planned}
+  - identifier: NAV-003
+    version: 0.1.0
+    title: Navigation state remains reachable and reversible
+    module: state
+    evidence: [EVD-WWDC25-DESIGN-SYSTEM]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: navigation.current in navigation.reachable_states and back never_produces invalid_state
+    measurement: {kind: runtime_plus_model_check}
+    verification: {status: planned}
+  - identifier: BRG-001
+    version: 0.1.0
+    title: Mixed-framework bridges reflect source state
+    module: state
+    evidence: [EVD-APPLE-UIVIEWCONTROLLERREPRESENTABLE-UPDATE]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: bridge.source_state_changed implies bridge.destination_configuration_matches_source_state
+    measurement: {kind: static_plus_runtime_state_trace}
+    verification: {status: planned}
+  - identifier: TYP-001
+    version: 0.1.0
+    title: Use Dynamic-Type-compatible text styles
+    module: typography
+    evidence: [EVD-WWDC24-DYNAMIC-TYPE]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: user_text.scalable implies user_text.semantic_style or approved_exception.exists
+    measurement: {kind: static_plus_runtime}
+    verification: {status: planned}
+  - identifier: TYP-002
+    version: 0.1.0
+    title: Text remains usable at accessibility sizes
+    module: typography
+    evidence: [EVD-WWDC24-DYNAMIC-TYPE, EVD-HIG-ACCESSIBILITY]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: critical_text.clipped == false and critical_action.reachable == true
+    measurement: {kind: dynamic_type_matrix}
+    verification: {status: planned}
+  - identifier: SPC-001
+    version: 0.1.0
+    title: Spacing uses system layout or a versioned observed token
+    module: layout
+    evidence: [EVD-OBSERVATION-PROTOCOL]
+    normative_strength: observed
+    severity: warning
+    enforcement: warning
+    predicate: spacing.system_managed or spacing.value in active_profile.tokens or approved_exception.exists
+    measurement: {kind: static_candidate_plus_geometry}
+    verification: {status: planned}
+  - identifier: CLR-001
+    version: 0.1.0
+    title: Prefer semantic and adaptive colors
+    module: color
+    evidence: [EVD-HIG-COLOR]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: role_color.semantic or brand_color.documented or approved_exception.exists
+    measurement: {kind: static_plus_appearance_matrix}
+    verification: {status: planned}
+  - identifier: HIT-001
+    version: 0.1.0
+    title: Interactive targets provide sufficient hit regions
+    module: interaction
+    evidence: [EVD-HIG-BUTTONS]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: control.hit_width_pt >= 44 and control.hit_height_pt >= 44
+    measurement: {kind: runtime_accessibility_frame}
+    verification: {status: planned}
+  - identifier: ACC-001
+    version: 0.1.0
+    title: Accessible elements expose meaningful semantics
+    module: accessibility
+    evidence: [EVD-HIG-ACCESSIBILITY, EVD-XCTEST-ACCESSIBILITY-AUDIT]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: interactive_element.label.meaningful and interactive_element.action_available
+    measurement: {kind: accessibility_tree_and_audit}
+    verification: {status: planned}
+  - identifier: ACC-002
+    version: 0.1.0
+    title: Common tasks remain completable with assistive technology
+    module: accessibility
+    evidence: [EVD-HIG-ACCESSIBILITY]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: common_task.completable_by_assistive_technology and not common_task.relies_on_color_only
+    measurement: {kind: assisted_task_trace}
+    verification: {status: planned}
+  - identifier: GST-001
+    version: 0.1.0
+    title: Custom gestures have an accessible alternative
+    module: interaction
+    evidence: [EVD-HIG-ACCESSIBILITY]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: custom_gesture.exists implies alternate_visible_or_accessible_action.exists
+    measurement: {kind: source_plus_accessibility_tree}
+    verification: {status: planned}
+  - identifier: MOT-001
+    version: 0.1.0
+    title: Motion respects accessibility preferences
+    module: motion
+    evidence: [EVD-HIG-MOTION, EVD-HIG-ACCESSIBILITY]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: reduce_motion.enabled implies nonessential_motion.disabled_or_reduced
+    measurement: {kind: runtime_state_diff}
+    verification: {status: planned}
+  - identifier: GLS-001
+    version: 0.1.0
+    title: Do not manually recreate system Liquid Glass
+    module: visual-system
+    profiles: [ios26, ipados26]
+    evidence: [EVD-WWDC25-LIQUID-GLASS, EVD-WWDC25-SWIFTUI-DESIGN, EVD-WWDC25-UIKIT-DESIGN]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: system_equivalent.exists implies custom_glass.exists == false or approved_exception.exists
+    measurement: {kind: ast_component_classification_plus_visual_review}
+    verification: {status: planned}
+  - identifier: SPL-001
+    version: 0.1.0
+    title: iPad hierarchy adapts through system split navigation
+    module: ipad
+    profiles: [ipados18, ipados26]
+    evidence: [EVD-WWDC25-IPAD, EVD-WWDC25-SWIFTUI-DESIGN, EVD-WWDC25-UIKIT-DESIGN]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: multi_level_hierarchy implies adaptive_navigation_container
+    measurement: {kind: static_plus_width_matrix}
+    verification: {status: planned}
+  - identifier: WIN-001
+    version: 0.1.0
+    title: Window resize preserves data and recoverable navigation state
+    module: ipad
+    profiles: [ipados26]
+    evidence: [EVD-WWDC25-IPAD]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: resize preserves persistent_data and resize preserves recoverable_navigation_state
+    measurement: {kind: runtime_plus_model_check}
+    verification: {status: planned}
+  - identifier: PTR-001
+    version: 0.1.0
+    title: Pointer is additive to touch
+    module: interaction
+    profiles: [ipados18, ipados26]
+    evidence: [EVD-HIG-POINTING, EVD-WWDC25-IPAD]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: pointer_action.exists implies touch_equivalent.exists
+    measurement: {kind: input_capability_matrix}
+    verification: {status: planned}
+  - identifier: KEY-001
+    version: 0.1.0
+    title: Common iPad actions support keyboard interaction
+    module: interaction
+    profiles: [ipados18, ipados26]
+    evidence: [EVD-HIG-ACCESSIBILITY, EVD-WWDC25-IPAD]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: common_command.keyboard_reachable and focus_graph.has_no_trap
+    measurement: {kind: keyboard_command_and_focus_graph}
+    verification: {status: planned}
+  - identifier: PCL-001
+    version: 0.1.0
+    title: Pencil is not the sole path to a core action
+    module: interaction
+    profiles: [ipados18, ipados26]
+    evidence: [EVD-HIG-PENCIL]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: pencil_action.core implies touch_or_keyboard_equivalent.exists
+    measurement: {kind: input_capability_matrix}
+    verification: {status: planned}
+  - identifier: PRV-001
+    version: 0.1.0
+    title: Permission prompts require contextual user intent
+    module: privacy
+    evidence: [EVD-HIG-PRIVACY]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: permission_prompt.visible implies feature_intent.active
+    measurement: {kind: runtime_plus_model_check}
+    verification: {status: planned}
+  - identifier: DST-001
+    version: 0.1.0
+    title: Destructive transitions preserve cancellation safety
+    module: destructive
+    evidence: [EVD-HIG-ALERTS, EVD-HIG-ACCESSIBILITY]
+    normative_strength: must
+    severity: error
+    enforcement: hard
+    predicate: destructive_commit implies confirmation_obtained and cancel implies persistent_data.unchanged
+    measurement: {kind: runtime_plus_model_check}
+    verification: {status: planned}

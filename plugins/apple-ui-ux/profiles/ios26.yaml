@@ -1,0 +1,8 @@
+schema_version: "1.0"
+identifier: ios26
+platform: iOS
+major_version: 26
+visual_system: liquid_glass
+frameworks: [SwiftUI, UIKit, mixed]
+evidence_snapshot: apple-public-ui-ux@2026.08
+status: active

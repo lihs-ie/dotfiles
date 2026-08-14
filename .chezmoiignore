@@ -1,5 +1,6 @@
 # chezmoi が ~/ に apply しないファイル/ディレクトリ。
-# dot_claude/ → ~/.claude/ と dot_config/ → ~/.config/ のみを chezmoi 管理とし、
+# dot_claude/ → ~/.claude/、dot_config/ → ~/.config/、dot_agents/ → ~/.agents/、
+# plugins/ → ~/plugins/ を chezmoi 管理とし、
 # repo root の dogfood ファイル (AGENTS.md / CLAUDE.md / scripts / ci 等) は repo 内のみ。
 
 # dotfiles repo の dogfood (agent-policy-kit による自己適用)
@@ -15,3 +16,5 @@ tests
 .github
 .gitignore
 .chezmoiignore
+**/__pycache__
+**/*.pyc

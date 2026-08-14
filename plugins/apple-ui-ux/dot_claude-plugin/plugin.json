@@ -1,0 +1,6 @@
+{
+  "name": "apple-ui-ux",
+  "version": "0.1.0",
+  "description": "Generate or adapt iOS and iPadOS interfaces against versioned Apple public UI/UX evidence profiles.",
+  "author": {"name": "lihs"}
+}

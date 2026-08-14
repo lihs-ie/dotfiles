@@ -1,0 +1,34 @@
+{
+  "name": "apple-ui-ux",
+  "version": "0.1.0+codex.20260814035055",
+  "description": "Generate or adapt iOS and iPadOS interfaces against versioned Apple public UI/UX evidence profiles.",
+  "author": {
+    "name": "lihs"
+  },
+  "repository": "https://github.com/lihs-ie/dotfiles",
+  "keywords": [
+    "ios",
+    "ipados",
+    "swiftui",
+    "uikit",
+    "accessibility",
+    "ui-ux"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Apple Public UI/UX Profiles",
+    "shortDescription": "Design and adapt native iOS and iPadOS interfaces",
+    "longDescription": "Create or adapt SwiftUI, UIKit, and mixed interfaces through a reviewable design handoff, explicit human approval, and versioned Apple public evidence profiles.",
+    "developerName": "lihs",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Generate an approved iOS and iPadOS UI from this specification.",
+      "Audit and adapt this existing UI against an Apple public evidence profile."
+    ]
+  }
+}

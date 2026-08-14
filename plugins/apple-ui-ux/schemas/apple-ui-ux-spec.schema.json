@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lihs.local/schemas/apple-ui-ux-spec.schema.json",
+  "title": "Apple Public UI UX Design Specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "identifier", "workflow", "design_backend", "profiles", "frameworks", "design_status", "screens", "artifacts", "behavior_changes"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "identifier": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"},
+    "title": {"type": "string", "minLength": 1},
+    "workflow": {"enum": ["generate", "conform"]},
+    "design_backend": {"enum": ["claude-design", "open-design"]},
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["ios18", "ipados18", "ios26", "ipados26"]}
+    },
+    "frameworks": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["swiftui", "uikit", "mixed"]}
+    },
+    "design_status": {"enum": ["draft", "directions_ready", "direction_selected", "states_ready", "review_ready"]},
+    "selected_direction": {"type": ["string", "null"]},
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identifier", "role", "primary_task", "states", "devices", "appearances", "dynamic_type"],
+        "properties": {
+          "identifier": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+          "role": {"type": "string", "minLength": 1},
+          "primary_task": {"type": "string", "minLength": 1},
+          "states": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["populated", "empty", "loading", "error", "permission", "destructive"]}},
+          "devices": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["iphone", "ipad"]}},
+          "appearances": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["light", "dark"]}},
+          "dynamic_type": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["standard", "accessibility-maximum", "all-12"]}}
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "kind"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["prototype", "image", "design-file", "design-system", "state-matrix", "audit-report"]}
+        }
+      }
+    },
+    "applicable_rules": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "behavior_changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "approval"],
+        "properties": {
+          "description": {"type": "string", "minLength": 1},
+          "approval": {"enum": ["not_required", "pending", "approved", "rejected"]}
+        }
+      }
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule", "owner", "reason", "expires_at", "profile", "accessibility_evidence"],
+        "properties": {
+          "rule": {"type": "string"},
+          "owner": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1},
+          "expires_at": {"type": "string", "format": "date"},
+          "profile": {"type": "string"},
+          "accessibility_evidence": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

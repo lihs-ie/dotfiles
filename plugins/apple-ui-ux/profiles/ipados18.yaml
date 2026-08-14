@@ -1,0 +1,9 @@
+schema_version: "1.0"
+identifier: ipados18
+platform: iPadOS
+major_version: 18
+visual_system: pre_liquid_glass
+windowing: legacy_ipad_multitasking
+frameworks: [SwiftUI, UIKit, mixed]
+evidence_snapshot: apple-public-ui-ux@2026.08
+status: active

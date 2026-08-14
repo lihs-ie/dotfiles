@@ -1,0 +1,4 @@
+interface:
+  display_name: "Conform Apple Profile UI"
+  short_description: "Audit and adapt existing iOS and iPadOS UI"
+  default_prompt: "Use $conform-apple-ui to audit and adapt this existing iOS or iPadOS interface against the selected Apple public evidence profile."

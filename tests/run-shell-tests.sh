@@ -26,6 +26,10 @@ run_test() {
   fi
 }
 
+run_test "apple-ui-ux plugin contracts and approval gate" \
+  "bash plugins/apple-ui-ux/tests/test-foundation.sh" \
+  0
+
 run_test "verify-failure-class valid" \
   "bash scripts/verify-failure-class.sh tests/fixtures/iterations_valid.json" \
   0

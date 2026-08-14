@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lihs.local/schemas/apple-ui-ux-profile.schema.json",
+  "title": "Apple Public UI UX Evidence Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "identifier", "platform", "major_version", "visual_system", "frameworks", "evidence_snapshot", "status"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "identifier": {"type": "string", "pattern": "^(ios|ipados)[0-9]+$"},
+    "platform": {"enum": ["iOS", "iPadOS"]},
+    "major_version": {"type": "integer", "minimum": 18},
+    "visual_system": {"enum": ["pre_liquid_glass", "liquid_glass"]},
+    "windowing": {"enum": ["legacy_ipad_multitasking", "resizable_window_system"]},
+    "frameworks": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"enum": ["SwiftUI", "UIKit", "mixed"]}},
+    "evidence_snapshot": {"type": "string", "pattern": "^apple-public-ui-ux@[0-9]{4}\\.[0-9]{2}$"},
+    "status": {"enum": ["active", "deprecated"]}
+  }
+}

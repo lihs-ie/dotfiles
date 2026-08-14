@@ -57,6 +57,24 @@ rules:
       - "dot_claude/skills/z3-tla-playbook/scripts/executable_setup-env.sh"
     reason: "新規テンプレは setup-env.sh --init の配置リストか SKILL.md のファイル構成に載らないと、どこからも展開されない dead template になる。"
 
+  - id: apple-ui-ux-skills-wired-to-shared-contracts
+    when: "plugins/apple-ui-ux/skills/**"
+    require_one_of:
+      - "plugins/apple-ui-ux/references/workflow-contract.md"
+      - "plugins/apple-ui-ux/open-design.json"
+      - "plugins/apple-ui-ux/tests/test-foundation.sh"
+    reason: "生成・適合 Skill は共通のprofile、rule、approval lifecycleから到達できなければ、hostごとに設計判断と人間ゲートが分岐する。"
+    smoke: "bash plugins/apple-ui-ux/tests/test-foundation.sh"
+
+  - id: apple-ui-ux-contracts-wired-to-verifier
+    when: "plugins/apple-ui-ux/**"
+    require_one_of:
+      - "plugins/apple-ui-ux/skills/generate-apple-ui/SKILL.md"
+      - "plugins/apple-ui-ux/skills/conform-apple-ui/SKILL.md"
+      - "plugins/apple-ui-ux/tests/test-foundation.sh"
+    reason: "Rule/Evidence/Profile/Schema/approval gateは、公開Skillと決定論的contract testのどちらからも参照されないdead resourceにしない。"
+    smoke: "python3 plugins/apple-ui-ux/scripts/approval_gate.py validate-foundation"
+
   - id: iterations-schema-in-skill
     when: "dot_claude/agents/implementer.md"
     require_one_of:

@@ -1,0 +1,23 @@
+schema_version: "1.0"
+identifier: recall-paper-today
+title: Recall Paper Today
+workflow: conform
+design_backend: open-design
+profiles: [ios18, ipados18, ios26, ipados26]
+frameworks: [mixed]
+design_status: review_ready
+selected_direction: system-standard
+screens:
+  - identifier: today
+    role: task-list
+    primary_task: Review and open today's recall items
+    states: [populated, empty, loading, error, destructive]
+    devices: [iphone, ipad]
+    appearances: [light, dark]
+    dynamic_type: [standard, accessibility-maximum]
+artifacts:
+  - path: design/apple-ui-ux/artifacts/today.html
+    kind: prototype
+applicable_rules: [NAV-001, TYP-001, TYP-002, CLR-001, HIT-001, ACC-001, SPL-001, WIN-001]
+behavior_changes: []
+exceptions: []

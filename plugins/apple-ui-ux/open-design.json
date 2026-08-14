@@ -1,0 +1,46 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "apple-ui-ux",
+  "title": "Apple Public UI/UX Profiles",
+  "title_i18n": {"en": "Apple Public UI/UX Profiles", "ja": "Apple公開UI/UXプロファイル"},
+  "version": "0.1.0",
+  "description": "Generate or adapt native iOS and iPadOS interface designs through an explicit human approval gate.",
+  "description_i18n": {
+    "en": "Generate or adapt native iOS and iPadOS interface designs through an explicit human approval gate.",
+    "ja": "iOS・iPadOSのネイティブUIを生成または適合変換し、明示的な人間承認を経て実装へ引き渡します。"
+  },
+  "author": {"name": "lihs", "url": "https://github.com/lihs-ie"},
+  "homepage": "https://github.com/lihs-ie/dotfiles",
+  "tags": ["ios", "ipados", "swiftui", "uikit", "accessibility"],
+  "compat": {
+    "agentSkills": [
+      {"path": "./skills/generate-apple-ui/SKILL.md"},
+      {"path": "./skills/conform-apple-ui/SKILL.md"}
+    ],
+    "claudePlugins": [{"path": "./.claude-plugin/plugin.json"}]
+  },
+  "od": {
+    "kind": "bundle",
+    "mode": "prototype",
+    "platform": "mobile",
+    "scenario": "product-design",
+    "useCase": {
+      "query": {
+        "en": "{{workflow}} an iOS and iPadOS interface using the selected Apple public evidence profiles, then stop for my approval.",
+        "ja": "Apple公開根拠プロファイルを使ってiOS・iPadOS UIを{{workflow}}し、私の承認待ちで停止してください。"
+      }
+    },
+    "context": {
+      "skills": [
+        {"ref": "./skills/generate-apple-ui"},
+        {"ref": "./skills/conform-apple-ui"}
+      ],
+      "designSystem": {"ref": "./design-systems/apple-public-ui-ux"}
+    },
+    "inputs": [
+      {"name": "workflow", "label": "Workflow", "type": "select", "options": ["generate", "conform"]}
+    ],
+    "capabilities": ["prompt:inject", "fs:read", "fs:write"]
+  }
+}

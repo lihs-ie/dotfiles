@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate Apple Profile UI"
+  short_description: "Generate approved iOS and iPadOS interfaces"
+  default_prompt: "Use $generate-apple-ui to turn this product specification into an approved iOS and iPadOS design handoff."

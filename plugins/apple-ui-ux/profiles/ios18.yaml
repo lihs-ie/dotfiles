@@ -1,0 +1,8 @@
+schema_version: "1.0"
+identifier: ios18
+platform: iOS
+major_version: 18
+visual_system: pre_liquid_glass
+frameworks: [SwiftUI, UIKit, mixed]
+evidence_snapshot: apple-public-ui-ux@2026.08
+status: active
