@@ -10,6 +10,7 @@ import Idchain.Oracle
 import Idchain.Pairwise
 import Idchain.Bench
 import Idchain.Lint
+import Idchain.Delegation
 
 /-!
 # CLI (対象 repo の IdchainMain が呼ぶライブラリ層)
@@ -37,6 +38,11 @@ def gateStatusJson (registry : Registry) (violationCount : Nat) : String :=
   s!"\{\n  \"approvedFreshSpecs\": {approvedFreshSpecs},\n  \"unapprovedSpecs\": {unapprovedSpecs},\n  \"violations\": {violationCount}\n}\n"
 
 def runCheck (registry : Registry) : IO UInt32 := do
+  try Delegation.validateAll registry
+  catch error =>
+    IO.eprintln s!"idchain check: delegation violation: {error}"
+    IO.FS.writeFile ".gate-status.json" (gateStatusJson registry 1)
+    return 1
   let violations := registry.checkAll
   -- 編集ブロック hook が四層強制の一角として読む状態ファイル。exit code に関わらず毎回書く。
   IO.FS.writeFile ".gate-status.json" (gateStatusJson registry violations.length)
@@ -190,6 +196,10 @@ def loadBenchResult : IO (Option BenchRunResult) := do
     pure none
 
 def runReport (registry : Registry) (date : String) : IO UInt32 := do
+  try Delegation.validateAll registry
+  catch error =>
+    IO.eprintln s!"idchain report: delegation violation: {error}"
+    return 1
   match ← loadConfig with
   | .error message =>
     IO.eprintln s!"idchain report: idchain.json の解析に失敗: {message}"
@@ -218,6 +228,90 @@ def runReport (registry : Registry) (date : String) : IO UInt32 := do
       let overall := overallPass violations result verdicts oracleResult benchResult registry
       IO.println s!"idchain report: reports/{date}/ に生成 (総合判定: {if overall then "PASS" else "FAIL"})"
       return (if overall then 0 else 1)
+
+/-- Compare the submitted report with a fresh computation, without writing reports on failure. -/
+def verifyDelegationReport (registry : Registry) (receipt : DelegationCompletion) : IO Unit := do
+  let .ok config ← loadConfig | throw (IO.userError "invalid configuration")
+  let files ← readTestFiles config
+  let .loaded cases ← loadXunit config | throw (IO.userError "completion requires executed xunit evidence")
+  let report : Lean.Json ← Delegation.readJson receipt.report.path
+  let .ok date := report.getObjVal? "date" >>= Lean.Json.getStr? |
+    throw (IO.userError "report date missing")
+  let actual := renderReportJson date registry registry.checkAll (crosscheck registry files cases)
+    (← loadOracleResult) (← loadBenchResult)
+  let .ok expected := Lean.Json.parse actual | throw (IO.userError "report rendering failed")
+  unless report == expected do throw (IO.userError "verification report is stale or not engine-generated")
+
+def runDelegationUse (registry : Registry) (path : String) : IO UInt32 := do
+  try
+    Delegation.validateAll registry
+    let usage : DelegationUse ← Delegation.readJson path
+    let ledger ← Delegation.loadLedger
+    Delegation.verifyLedgerHistory ledger true
+    let grant ← Delegation.loadGrant usage.contract
+    unless usage.contractHash == grant.confirmedHash do throw (IO.userError "stale contract hash")
+    match validateDelegationUse grant.contract ledger usage with
+    | .error error => throw (IO.userError error)
+    | .ok _ => pure ()
+    Delegation.verifyAnchors registry grant.contract
+    let some target := SimpleIdentifier.parse usage.target | throw (IO.userError "invalid target")
+    for evidence in usage.evidence do Delegation.verifyEvidence evidence
+    let mut updated := registry.approvals
+    if usage.decision == "review" then
+      unless (registry.contentHashFor target).map renderHash == some usage.contentHash do
+        throw (IO.userError "scope review target is stale")
+    if usage.decision == "approve" then
+      let some contentHash := registry.contentHashFor target | throw (IO.userError "target absent")
+      unless renderHash contentHash == usage.contentHash do throw (IO.userError "stale target")
+      Delegation.verifyScope grant usage
+      let some scope := usage.evidence.head? | throw (IO.userError "scope receipt missing")
+      let review : DelegationScopeReview ← Delegation.readJson scope.path
+      unless ledger.any (fun u => u.decision == "review" && u.target == usage.target &&
+          u.contentHash == usage.contentHash && u.agent == review.reviewedBy) do
+        throw (IO.userError "scope reviewer must match consumed review reservation")
+      let requiresCompletion := match target.kind with
+        | .ll => true
+        | .rm => (registry.findRoadmapItem target.number).any (·.status == .done)
+        | .hy => (registry.findHypothesis target.number).any (·.status != .untested)
+        | _ => false
+      unless usage.requiresCompletion == requiresCompletion do
+        throw (IO.userError "G3 delivery classification mismatch")
+      if target.kind == .sp then
+        unless registry.semanticReviews.any (fun review => review.spec == target.number &&
+            review.verdict && review.contentHash == contentHash && review.reviewedBy != usage.agent) do
+          throw (IO.userError "G2 requires fresh independent semantic review before delegation")
+        unless !(registry.testCases.any (·.identifier.spec == target.number)) ||
+            registry.approvals.any (·.target == target) do
+          throw (IO.userError "derive TC only after G2 approval")
+      let approval : Approval := {
+        approvedBy := usage.agent
+        date := usage.date
+        note := usage.note
+        contentHash := contentHash
+        authority := .delegated usage.contract usage.contractHash usage.sequence }
+      updated := upsertApproval registry.approvals ⟨target, approval⟩
+      if requiresCompletion then
+        let some evidence := usage.evidence[1]? | throw (IO.userError "G1/G3 requires completion evidence")
+        -- Only this reviewed approval is prospective; every other violation remains visible.
+        verifyDelegationReport { registry with approvals := updated }
+          (← Delegation.verifyCompletion grant.contract usage evidence)
+      unless ← ("Canon/Approvals.lean" : System.FilePath).pathExists do
+        throw (IO.userError "Canon/Approvals.lean missing")
+    if usage.decision == "complete" then
+      let some evidence := usage.evidence.head? | throw (IO.userError "completion receipt missing")
+      verifyDelegationReport registry (← Delegation.verifyCompletion grant.contract usage evidence)
+      unless grant.contract.targets.all (fun t => (SimpleIdentifier.parse t.target).any registry.isApproved) do
+        throw (IO.userError "all authorized targets must have fresh approvals before completion")
+    IO.FS.createDirAll ".delegation"
+    -- Fail closed on interruption: ledger-first leaves no unauthorized approval.
+    IO.FS.writeFile Delegation.ledgerPath ((Lean.toJson (ledger ++ [usage])).pretty ++ "\n")
+    if usage.decision == "approve" then
+      IO.FS.writeFile "Canon/Approvals.lean" (renderApprovalsLean updated)
+    IO.println s!"delegated {usage.decision}: {usage.target} by {usage.agent}; commit ledger before next use"
+    return 0
+  catch error =>
+    IO.eprintln s!"idchain delegation: {error}"
+    return 1
 
 def runApprove (registry : Registry) (args : List String) : IO UInt32 := do
   match args with
@@ -408,6 +502,21 @@ def runInitCommand (rest : List String) : IO UInt32 := do
       return 2
 
 def run (registry : Registry) (args : List String) : IO UInt32 := do
+  -- Check/report must not trust a ledger containing hand-written completion claims.
+  if args.head? == some "check" || args.head? == some "report" then
+    try
+      Delegation.validateAll registry
+      for usage in ← Delegation.loadLedger do
+        if usage.decision == "complete" || (usage.decision == "approve" && usage.requiresCompletion) then
+          let index := if usage.decision == "complete" then 0 else 1
+          let some evidence := usage.evidence[index]? | throw (IO.userError "completion receipt missing")
+          let grant ← Delegation.loadGrant usage.contract
+          verifyDelegationReport registry (← Delegation.verifyCompletion grant.contract usage evidence)
+    catch error =>
+      IO.eprintln s!"idchain: delegation violation: {error}"
+      if args.head? == some "check" then
+        IO.FS.writeFile ".gate-status.json" (gateStatusJson registry 1)
+      return 1
   match args with
   | ["check"] => runCheck registry
   | ["export"] => runExport registry
@@ -419,6 +528,8 @@ def run (registry : Registry) (args : List String) : IO UInt32 := do
   | ["pairwise"] => runPairwise registry
   | ["bench"] => runBench registry
   | "approve" :: rest => runApprove registry rest
+  | ["delegation", "use", path] => runDelegationUse registry path
+  | "delegation" :: rest => Delegation.runGrant registry rest
   | "semantic-review" :: rest => runSemanticReview registry rest
   | "init" :: rest => runInitCommand rest
   | _ => do

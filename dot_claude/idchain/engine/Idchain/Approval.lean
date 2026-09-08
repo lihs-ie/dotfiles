@@ -10,11 +10,17 @@ import Idchain.Canonical
 
 namespace Idchain
 
+inductive ApprovalAuthority where
+  | human
+  | delegated (contract : String) (hash : String) (sequence : Nat)
+  deriving Repr, DecidableEq, Inhabited
+
 structure Approval where
   approvedBy : String
   date : String
   note : String
   contentHash : UInt64
+  authority : ApprovalAuthority := .human
   deriving Repr, DecidableEq, Inhabited
 
 structure ApprovalRecord where

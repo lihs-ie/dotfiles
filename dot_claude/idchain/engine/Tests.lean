@@ -10,3 +10,4 @@ import Tests.BenchTests
 import Tests.CliTests
 import Tests.ModelTypesTests
 import Tests.LintTests
+import Tests.DelegationTests

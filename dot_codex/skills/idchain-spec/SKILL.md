@@ -12,6 +12,10 @@ description: idchain の仕様フェーズ (SP 起草 → 形式検査 → 意�
 
 ## 前提
 
+委任実行では [idchain-approve](../idchain-approve/SKILL.md) の委任契約を先に検査する。
+起草前に対象SPと固定受入条件の対応を確認し、契約外SPや新しい製品責務を追加しない。
+本書の人間確認手順は通常モード向け。契約内のG2判断は委任手順で行い、TCより前に記録する。
+
 ```bash
 cd <対象repo>/idchain
 export PATH="$HOME/.elan/bin:$PATH"
@@ -26,8 +30,7 @@ lake build && lake exe idchain check  # 現状が green であることを先に
   (`lake exe idchain check` の `retired-identifier-reuse` で機械検出される)。
 - SP には**帰属 FA が必須** (`Spec.featureArea : Nat`)。参照する FA が存在しないと
   `spec-without-feature-area` 違反になる。PB/VL/FA がまだ 1 件も無い repo では、
-  idchain-discovery skill (G1、上流フェーズ) がまだ存在しないため、最小限の PB/VL/FA を
-  ユーザーに確認しながら Canon に追記してからこの手順に戻る。
+  idchain-discovery (G1、上流フェーズ) で最小限のPB/VL/FAを確定してからこの手順に戻る。
 
 正例 (`Canon/Artifacts.lean` より、SP-047 を追加したときの形):
 
@@ -106,7 +109,8 @@ lake exe idchain check
 
 SP は文言レベルで多義的になりやすく、書いた本人 (実装コンテキストを持つエージェント) は
 気づきにくい。**実装コンテキストを一切共有しない別エージェント (subagent)** を起動し、
-渡すのは **SP の文と invariant のみ** (実装コード・チャット履歴・試行錯誤の経緯は渡さない)。
+渡すのは **SPの文・invariantとその型/helper、委任時は固定契約・受入条件との対応**
+(実装コード・チャット履歴・試行錯誤の経緯は渡さない)。
 以下 3 観点で検査させる:
 
 - 多義語の有無 (複数の意味に読める語句・省略された主語や単位はないか)
@@ -114,6 +118,10 @@ SP は文言レベルで多義的になりやすく、書いた本人 (実装コ
   明示されているか)
 - SP 文 ⇔ invariant の意味一致 (SP の日本語が言っていることと、手順2で書いた invariant が
   数学的に表現していることが一致するか)
+- 委任時は受入条件に必要な仕様だけか。具体的反例とその対応条件を示し、範囲外改善をblockerにしない。
+
+レビュー・修正は契約の累積予算内、最大2周（repoの上限が厳しければそちら）とする。
+FAILも実施回数へ含め、SP分割・再採番・別契約名で予算をリセットしない。
 
 判定は pass/fail の 2 値。**fail なら SP 文 (必要なら invariant も) を改訂し、手順1〜2 に
 戻ってから再度この手順をやり直す**。pass するまで手順5 (G2 人間ゲート) に進まない。
