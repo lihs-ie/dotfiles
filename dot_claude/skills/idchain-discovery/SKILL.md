@@ -14,6 +14,11 @@ Problem/Value/FeatureArea/Hypothesis を参照。
 
 ## 前提
 
+委任実行では [idchain-approve](../idchain-approve/SKILL.md) の契約を読む。
+利用者が成果と受入条件を既に決めている場合、課題選定や同じ委任を繰り返し質問しない。
+契約内の具体化と、新しいWhy/Whatの選択を分ける。新しい課題・受入条件・対象IDの追加は委任の範囲外。
+本書の人間ゲートは通常モード向けであり、契約で許可された判断は委任手順で記録する。
+
 ```bash
 cd <対象repo>/idchain
 export PATH="$HOME/.elan/bin:$PATH"

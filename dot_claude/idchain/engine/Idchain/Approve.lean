@@ -24,7 +24,11 @@ def upsertApproval (records : List ApprovalRecord) (record : ApprovalRecord) :
   records.filter (·.target != record.target) ++ [record]
 
 private def renderRecord (record : ApprovalRecord) : String :=
-  s!"  \{ target := ⟨Idchain.ArtifactKind.{record.target.kind.leanConstructor}, {record.target.number}⟩, approval := \{ approvedBy := {reprStr record.approval.approvedBy}, date := {reprStr record.approval.date}, note := {reprStr record.approval.note}, contentHash := 0x{renderHash record.approval.contentHash} } }"
+  let authority := match record.approval.authority with
+    | .human => ""
+    | .delegated contract hash sequence =>
+      s!", authority := .delegated {reprStr contract} {reprStr hash} {sequence}"
+  s!"  \{ target := ⟨Idchain.ArtifactKind.{record.target.kind.leanConstructor}, {record.target.number}⟩, approval := \{ approvedBy := {reprStr record.approval.approvedBy}, date := {reprStr record.approval.date}, note := {reprStr record.approval.note}, contentHash := 0x{renderHash record.approval.contentHash}{authority} } }"
 
 /-- `Canon/Approvals.lean` の全文を生成する。 -/
 def renderApprovalsLean (records : List ApprovalRecord) : String :=

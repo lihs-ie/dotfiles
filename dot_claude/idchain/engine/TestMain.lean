@@ -12,5 +12,6 @@ def main : IO UInt32 :=
     Idchain.Tests.BenchTests.suite,
     Idchain.Tests.CliTests.suite,
     Idchain.Tests.ModelTypesTests.suite,
-    Idchain.Tests.LintTests.suite
+    Idchain.Tests.LintTests.suite,
+    Idchain.Tests.DelegationTests.suite
   ]
